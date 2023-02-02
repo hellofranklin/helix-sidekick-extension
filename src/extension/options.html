@@ -16,6 +16,7 @@ governing permissions and limitations under the License.
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Franklin Sidekick</title>
 	<link rel="stylesheet" type="text/css" href="./options.css" />
+  <link rel="stylesheet" type="text/css" href="./hellofranklin.css" />
   <script src="./options.js" type="module"></script>
   <template id="configEditorTemplate">
     <div id="configEditor" class="config">
@@ -47,9 +48,42 @@ governing permissions and limitations under the License.
         <li><a href="__MSG_docs__" target="_blank" title="__MSG_help__">__MSG_help__</a></li>
       </ul>
     </nav>
+    <div>
+      <h2>__MSG_hf1click__</h2>
+
+    <div id="one-click-site" class="area expanded">
+      <h3> Name </h3>
+      <input type="url" id="siteName" placeholder="__MSG_quick_franklin_name_description__" required>
+
+
+      <h3> Templates </h3>
+
+      <div class="template-grid">
+
+        <div class="template-card">
+          <h4> Blank Site</h4>
+          <input name="template-type" class="radio" type="radio" value="blanksite" >
+
+        </div>
+
+        <div class="template-card">
+          <h4> Franklin Sample Site </h4>
+          <input name="template-type" class="radio" type="radio" value="defaultsite" checked="checked">
+
+        </div>
+
+      </div>
+
+      <button id="createFranklinSite" >__MSG_quick_franklin_button_description__</button>
+        <br>
+      <label id="progress_label"></label>
+      <progress id="progress_bar" max="100" value="0"></progress>
+
+    </div>
     <div id="projects" class="area expanded">
-      <h2>__MSG_config_projects__ <span id="projects_num"><span></h2>
+      <h2>__MSG_config_projects__ <span id="projects_num"></span></h2>
       <div id="configs"></div>
+
         <div>
           <div>
             <h3>__MSG_config_shareurl_title__</h3>
@@ -108,7 +142,7 @@ governing permissions and limitations under the License.
       <div id="development" class="area advanced-only">
         <h2>__MSG_config_development__</h2>
         <div>
-          <p class="warn">__MSG_caution_side_effects__</p>
+          <p class="warn">__MSG_caution_side_effects__</p></div>
           <h3>__MSG_admin_version__</h3>
           <p class="warn">__MSG_admin_version_description__</p>
           <p><input type="text" class="version" id="adminVersion" placeholder="__MSG_admin_version_placeholder__"></p>

@@ -11,7 +11,9 @@
     "contextMenus",
     "scripting",
     "storage",
-    "activeTab"
+    "activeTab",
+    "identity",
+    "tabs"
   ],
   "host_permissions": [
     "http://localhost:3000/*",
@@ -75,5 +77,6 @@
     "32": "icons/helix_logo_32.png",
     "48": "icons/helix_logo_48.png",
     "128": "icons/helix_logo_128.png"
-  }
+  },
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlDDQ1eqHXp8iP0Qk4idYNqeTGki/DYqh1r0upks7sw/gS7ttXH7ALGzYL/kkBkHvTo+NcQsJR1ViYPC/SJGUufq+mhQhviS6dDQMidBRrsxi7TY7dJ+lDSPczM9HBW4Du/SqdisG56hjBVsJuyHUiVa/ei1q/iMWP/NeQaFKeFJZW2kPAm6eMAC+KuR0fOy12l4IzGS4H/LePX22khrobj55b74L1TmjJ1eDIGglrLkHi+EnDXJ3myYkFq5dTFBs4t8CuTwb14EpGksVzD571plFXv9Hp/B53mKAvQKqt1VwdxvUHpqcp85g4xgVAqIszD2YlJDms3wJvLXWZgmNuwIDAQAB"
 }
