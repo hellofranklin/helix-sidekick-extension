@@ -479,7 +479,7 @@ async function oneclicksample(siteName, templateId) {
         sendStatusMessage("Project setup completed !", 100);
         publish(gitcloneUrl);
     } catch (e) {
-        sendStatusMessage("Failed to create Franklin Project as ,"+ e.message, 0);
+        sendStatusMessage("Failed to create Franklin Project \n"+ e.message, 0);
     }
 }
 
@@ -500,11 +500,9 @@ async function getGitHubAuth() {
         url: create_auth_endpoint(),
         interactive: true,
     });
-    if (chrome.runtime.lastError) {
-        // sendResponse({message: 'fail'});
-    } else {
-        if (redirectUrl.includes('callback?error=access_denied')) {
-            log.error("Git Returned access denied ");
+        if (redirectUrl.includes('error=access_denied')) {
+            let errormsg=" Access denied !";
+            throw Error ("Failed to Authorize Git : "+errormsg);
         } else {
             git_auth_token = redirectUrl.substring(redirectUrl.indexOf('code=') + 5);
             setTimeout(() => {
@@ -513,7 +511,7 @@ async function getGitHubAuth() {
             }, 3600000);
             log.info(`GitHub AuthCode is ${git_auth_token}`)
         }
-    }
+
     return git_auth_token;
 }
 
@@ -554,6 +552,7 @@ async function create_user_repo(repoName, access_token) {
         body: JSON.stringify({'name': repoName})
     });
     let data = await response.json();
+
     // log.info("response while creating user Repo " + JSON.stringify(data));
     log.info(`The Git Repo Created at : ${data['url']}`);
     return data;
@@ -621,7 +620,10 @@ async function createFolder(folderName) {
         body: JSON.stringify({name: folderName, mimeType: 'application/vnd.google-apps.folder'})
     });
     let data = await response.json();
-    log.info("Response: " + JSON.stringify(data));
+    let errormsg;
+    if(errormsg=handleErrors(data)){
+        throw Error("\nFailed to create Google drive Folder : " +errormsg);
+    }
     log.info('The Folder has been Created successfully.');
     let fileId = data['id'];
     let folderUrl = `https://drive.google.com/drive/folders/${fileId}`;
@@ -640,8 +642,28 @@ async function createPermission(fileId) {
     });
     let data = await response.json();
     log.info("Respone: " + JSON.stringify(data));
+    let errormsg;
+    if(errormsg=handleErrors(data)){
+        throw Error("\nFailed to give permission to Google drive Folder : " +errormsg);
+    }
     log.info('The Folder has been given the permission successfully.');
 
+}
+function handleErrors(data){
+    let errormsg;
+    if(data["error"]) {
+        if (data["error"]["message"]) {
+            if (data["error"]["message"].includes("User message")) {
+                errormsg = data["error"]["message"].substring(data["error"]["message"].indexOf("User message")+14);
+            } else {
+                errormsg = data["error"]["message"];
+            }
+        } else {
+            errormsg = data;
+        }
+    }
+    log.error(errormsg);
+    return errormsg;
 }
 
 async function createindexFile(fileId) {
@@ -719,6 +741,9 @@ async function editFsTab(giturl, gitAccessToken, folderId) {
         headers: {'Authorization': authtring, 'Content-Type': 'application/json'}
     });
     let data1 = await response1.json();
+    if(errormsg=handleErrors(data1)){
+        throw Error("\nFailed to update FsTab : " +errormsg);
+    }
     let blobsha = data1['sha'];
 
     let contentString = `mountpoints:
@@ -731,6 +756,10 @@ async function editFsTab(giturl, gitAccessToken, folderId) {
         body: JSON.stringify(bodyjson)
     });
     let data = await response.json();
+    let errormsg;
+    if(errormsg=handleErrors(data)){
+        throw Error("\nFailed to update FsTab : " +errormsg);
+    }
     log.info(`The FSTab.yaml updated : ${JSON.stringify(data)}`);
     // log.info(` ${JSON.stringify(data)}`);
     return data;
@@ -867,6 +896,10 @@ async function createDefaultFiles(folderId, fileName, fileblob, type) {
         body: JSON.stringify({name: fileName, mimeType: mimeType, parents: [folderId]})
     });
     let metaResponse = await response;
+    let errormsg;
+    if(errormsg=handleErrors(metaResponse)){
+        throw Error("\nFailed to create Tempate : " +errormsg);
+    }
     let location = metaResponse.headers.get("location");
     // log.info("file location is : " + location);
     let response2 = await fetch(location, {
@@ -875,6 +908,9 @@ async function createDefaultFiles(folderId, fileName, fileblob, type) {
         body: await fileblob
     });
     let dataResponse = await response2.json();
+    if(errormsg=handleErrors(data)){
+        throw Error("\nFailed to create Tempate : " +errormsg);
+    }
     log.info("Response for file creation is : " + JSON.stringify(dataResponse));
     let createdfileId = dataResponse['id'];
     // let fileurl=`https://docs.google.com/spreadsheets/d/${createdfileId}/edit`;
