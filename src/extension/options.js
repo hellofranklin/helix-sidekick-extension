@@ -525,7 +525,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.message.data.includes('publish')) {
         let giturl = '';
         giturl = request.message.gitcloneUrl;
-
+        log.debug(` publish message Recieved : `+JSON.stringify(request));
         addProject({giturl: giturl}, (added) => {
             if (added) {
                 drawProjects();
@@ -533,7 +533,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             }
         });
 
-    } else if (request.message.includes("statusUpdate")) {
+    } else if (request.message.data.includes("statusUpdate")) {
         const progressLabel = document.getElementById("progress_label")
         const progressBar = document.getElementById("progress_bar")
         let percentageText='';

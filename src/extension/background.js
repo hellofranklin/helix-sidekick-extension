@@ -461,23 +461,22 @@ async function oneclicksample(siteName, templateId) {
         const giturl = gitData['url'];
         const gitcloneUrl = gitData['clone_url'];
         log.info(' Authorizing google account')
-        sendStatusMessage("Setup Helix Bot", 34);
-        await installHelixbot();
-        sendStatusMessage("Helix Bot added successfully", 66);
-        sendStatusMessage("Setting up Google Drive folder...", 67);
+        sendStatusMessage("Setting up Google Drive folder...", 40);
         await get_gauth();
         const folderId = await createFolder(siteName);
-
-        sendStatusMessage("Setting up Google Drive folder...", 85);
+        sendStatusMessage("Google Drive folder created successfully", 50);
+        sendStatusMessage("Giving Permission to Google Drive", 53);
         await createPermission(folderId);
-        // let file=await createindexFile(folderId);
-        // let spreadsheetFile=await createIndexSpreadsheetFile(folderId);
-        // log.info("file : " + file);
-        // log.info("spreadsheet file : " + spreadsheetFile);
-        await addTemplate(templateId, folderId);
-        sendStatusMessage("Google Drive folder created successfully", 90);
-        sendStatusMessage("Updating FsTab", 95);
+        sendStatusMessage("Giving Permission to Google Drive", 60);
+        sendStatusMessage("Updating FsTab", 65);
         await editFsTab(giturl, git_access_token, folderId);
+        sendStatusMessage("Adding Templates", 75);
+        await addTemplate(templateId, folderId);
+        sendStatusMessage("Templates Added Templates", 85);
+        sendStatusMessage("Setup Helix Bot", 90);
+        await installHelixbot();
+        sendStatusMessage("Helix Bot added successfully", 95);
+
         sendStatusMessage("Project setup completed !", 100);
         publish(gitcloneUrl);
     } catch (e) {
@@ -487,7 +486,9 @@ async function oneclicksample(siteName, templateId) {
 
 function sendStatusMessage(statusMessage, percentCompletion) {
     chrome.runtime.sendMessage({
-        message: "statusUpdate",
+        message:{
+            data:"statusUpdate"
+        } ,
         statusMessage: statusMessage,
         percentCompletion: percentCompletion
     })
@@ -741,11 +742,6 @@ function publish(gitcloneUrl) {
             message: {
                 data: 'publish',
                 gitcloneUrl: gitcloneUrl
-            }
-        }
-        , function (response) {
-            if (response.message === 'success') {
-                window.close();
             }
         });
 }

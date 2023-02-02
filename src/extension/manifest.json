@@ -19,14 +19,14 @@
     "http://localhost:3000/*",
     "https://*/*"
   ],
-  "__chrome__background": {
+  "background": {
     "service_worker": "background.js",
     "type": "module"
   },
-  "__safari__background": {
-    "page": "background.html",
-    "persistent": false
-  },
+//  "__safari__background": {
+//    "page": "background.html",
+//    "persistent": false
+//  },
   "externally_connectable": {
     "matches": [
       "https://admin.hlx.page/*"
