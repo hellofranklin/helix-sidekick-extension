@@ -242,9 +242,9 @@ async function updateHelpTopic(helpContent, topicId, userStatus) {
 
 window.addEventListener('DOMContentLoaded', () => {
     // i18n
-    chrome.identity.clearAllCachedAuthTokens();
-    const progressBar = document.getElementById("progress_bar");
-    progressBar.style.display = 'none';
+    // chrome.identity.clearAllCachedAuthTokens();
+    document.getElementById("progress_bar").style.display = 'none';
+    document.getElementById("createFranklinSite").style.visibility = 'hidden';
 
     document.body.innerHTML = document.body.innerHTML
         .replaceAll(/__MSG_([0-9a-zA-Z_]+)__/g, (match, msg) => i18n(msg));
@@ -283,6 +283,19 @@ window.addEventListener('DOMContentLoaded', () => {
         return oauth2_url;
     }
 
+    document.getElementById("siteName").addEventListener('input',(event)=>{
+        if(document.getElementById("siteName").value.length>0){
+            if(!document.getElementById("siteName").value.match(/^[0-9a-z]+$/)){
+                setErrorMessage("Invalid Site Name");
+            }else {
+                document.getElementById("createFranklinSite").style.visibility = 'visible';
+            }
+        }
+        else{
+            clearErrorMessage();
+            document.getElementById("createFranklinSite").style.visibility = 'hidden';
+        }
+    })
     document.getElementById('createFranklinSite').addEventListener('click', async () => {
         const siteName = document.getElementById('siteName').value;
         log.info("Creating quick franklin project ");
@@ -561,3 +574,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
     return true;
 });
+
+function setErrorMessage(errortext){
+    const nameValidationLabel = document.getElementById("nameValidationErrors")
+    nameValidationLabel.innerText=errortext;
+    nameValidationLabel.style.color='#ff0000';
+}
+function clearErrorMessage() {
+    const nameValidationLabel = document.getElementById("nameValidationErrors");
+    nameValidationLabel.innerText='';
+}
+

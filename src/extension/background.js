@@ -476,11 +476,10 @@ async function oneclicksample(siteName, templateId) {
         sendStatusMessage("Setup Helix Bot", 90);
         await installHelixbot();
         sendStatusMessage("Helix Bot added successfully", 95);
-
         sendStatusMessage("Project setup completed !", 100);
         publish(gitcloneUrl);
     } catch (e) {
-        sendStatusMessage("Failed to create Franklin Project", 0);
+        sendStatusMessage("Failed to create Franklin Project as ,"+ e.message, 0);
     }
 }
 

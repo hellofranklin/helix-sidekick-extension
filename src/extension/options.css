@@ -478,13 +478,6 @@ body.advanced .advanced-only {
     display: none;
   }
 
-  #progress_bar{
-    padding: 2%;
-    width: 100%;
-  }
-  #progress_label{
-    padding: 2%;
-  }
 }
 
 

@@ -64,3 +64,14 @@ border:2px solid var(--color-green);
 border-radius: 10px;
 }
 
+#progress_bar{
+  padding: 2%;
+  width: 100%;
+}
+#progress_label{
+  padding: 2%;
+}
+#nameValidationErrors{
+  font-size: small;
+}
+
