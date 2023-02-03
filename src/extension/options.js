@@ -285,6 +285,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById("siteName").addEventListener('input',(event)=>{
         if(document.getElementById("siteName").value.length>0){
+            clearErrorMessage();
             if(!document.getElementById("siteName").value.match(/^[0-9a-z]+$/)){
                 setErrorMessage("Invalid Site Name");
             }else {
