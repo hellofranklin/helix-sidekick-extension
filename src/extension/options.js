@@ -83,7 +83,7 @@ function drawProjects() {
     <button class="editConfig" title="${i18n('config_edit')}">${i18n('config_edit')}</button>
     <button class="deleteConfig" title="${i18n('config_delete')}">${i18n('config_delete')}</button>
   </div>`;
-      section.querySelector('input[type="checkbox').addEventListener('click', async ({ target }) => {
+      section.querySelector('input[type=checkbox]').addEventListener('click', async ({ target }) => {
         const { checked } = target;
         projects[i].disabled = !checked;
         await setProject(projects[i]);
@@ -276,9 +276,9 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   // removed evnt from here : neeraj
   document.getElementById('siteName').addEventListener('input', () => {
-    if (document.getElementById('siteName').value.length > 0) {
+    if (document.getElementById('siteName').value.trim().length > 0) {
       clearErrorMessage();
-      if (!document.getElementById('siteName').value.match(/^[0-9a-z]+$/)) {
+      if (!document.getElementById('siteName').value.match(/^[0-9a-zA-Z ]+$/)) {
         setErrorMessage('Invalid Site Name');
       } else {
         document.getElementById('createFranklinSite').disabled = false;
@@ -289,7 +289,7 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
   document.getElementById('createFranklinSite').addEventListener('click', async () => {
-    const siteName = document.getElementById('siteName').value;
+    const siteName = document.getElementById('siteName').value.replaceAll(' ', '_').toLowerCase();
     log.info('Creating quick franklin project ');
     const templateName = document.querySelector('input[name="template-type"]:checked').value;
     chrome.runtime.sendMessage({
@@ -524,8 +524,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 chrome.runtime.onMessage.addListener((request) => {
   if (request.message !== undefined && request.message.data.includes('publish')) {
-    let giturl = '';
-    giturl = request.message.gitcloneUrl;
+    const giturl = request.message.gitcloneUrl;
     log.debug(` publish message Recieved : ${JSON.stringify(request)}`);
     addProject({ giturl }, (added) => {
       if (added) {
