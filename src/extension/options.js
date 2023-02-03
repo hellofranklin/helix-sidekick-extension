@@ -284,9 +284,9 @@ window.addEventListener('DOMContentLoaded', () => {
     }
 
     document.getElementById("siteName").addEventListener('input',(event)=>{
-        if(document.getElementById("siteName").value.length>0){
+        if(document.getElementById("siteName").value.trim().length>1){
             clearErrorMessage();
-            if(!document.getElementById("siteName").value.match(/^[0-9a-z]+$/)){
+            if(!document.getElementById("siteName").value.match(/^[0-9a-zA-Z ]+$/)){
                 setErrorMessage("Invalid Site Name");
             }else {
                 document.getElementById("createFranklinSite").disabled = false;
@@ -299,7 +299,7 @@ window.addEventListener('DOMContentLoaded', () => {
         }
     })
     document.getElementById('createFranklinSite').addEventListener('click', async () => {
-        const siteName = document.getElementById('siteName').value;
+        const siteName = document.getElementById('siteName').value.replaceAll(' ','_').toLowerCase();
         log.info("Creating quick franklin project ");
         const templateId = document.querySelector('input[name="template-type"]:checked').value;
         chrome.runtime.sendMessage({
