@@ -307,6 +307,7 @@ async function editFsTab(giturl, gitAccessToken, folderId) {
     method: 'GET',
     headers: {'Authorization': authtring, 'Content-Type': 'application/json'}
   });
+  let errormsg;
   let data1 = await response1.json();
   if(errormsg=handleErrors(data1)){
     throw Error("\nFailed to update FsTab : " +errormsg);
@@ -323,11 +324,13 @@ async function editFsTab(giturl, gitAccessToken, folderId) {
     body: JSON.stringify(bodyjson)
   });
   let data = await response.json();
-  let errormsg;
+
   if(errormsg=handleErrors(data)){
     throw Error("\nFailed to update FsTab : " +errormsg);
   }
-  log.info(`The FSTab.yaml updated : ${JSON.stringify(data)}`);
+  if(data["commit"]["message"].includes("updated")) {
+    log.info(`The FSTab.yaml updated : ${JSON.stringify(data)}`);
+  }
   // log.info(` ${JSON.stringify(data)}`);
   return data;
 }
@@ -475,7 +478,7 @@ async function createDefaultFiles(folderId, fileName, fileblob, type) {
     body: await fileblob
   });
   let dataResponse = await response2.json();
-  if(errormsg=handleErrors(data)){
+  if(errormsg=handleErrors(dataResponse)){
     throw Error("\nFailed to create Tempate : " +errormsg);
   }
   log.info("Response for file creation is : " + JSON.stringify(dataResponse));
@@ -483,7 +486,6 @@ async function createDefaultFiles(folderId, fileName, fileblob, type) {
   // let fileurl=`https://docs.google.com/spreadsheets/d/${createdfileId}/edit`;
   // return fileurl;
 }
-
 
 async function installHelixbot() {
   let response = chrome.identity.launchWebAuthFlow({url: "https://github.com/apps/helix-bot", interactive: true});

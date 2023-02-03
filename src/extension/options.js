@@ -242,9 +242,9 @@ async function updateHelpTopic(helpContent, topicId, userStatus) {
 
 window.addEventListener('DOMContentLoaded', () => {
     // i18n
-    // chrome.identity.clearAllCachedAuthTokens();
+    chrome.identity.clearAllCachedAuthTokens();
     document.getElementById("progress_bar").style.display = 'none';
-    document.getElementById("createFranklinSite").style.visibility = 'hidden';
+    document.getElementById("createFranklinSite").disabled = true;
 
     document.body.innerHTML = document.body.innerHTML
         .replaceAll(/__MSG_([0-9a-zA-Z_]+)__/g, (match, msg) => i18n(msg));
@@ -289,12 +289,13 @@ window.addEventListener('DOMContentLoaded', () => {
             if(!document.getElementById("siteName").value.match(/^[0-9a-z]+$/)){
                 setErrorMessage("Invalid Site Name");
             }else {
-                document.getElementById("createFranklinSite").style.visibility = 'visible';
+                document.getElementById("createFranklinSite").disabled = false;
+
             }
         }
         else{
             clearErrorMessage();
-            document.getElementById("createFranklinSite").style.visibility = 'hidden';
+            document.getElementById("createFranklinSite").disabled = true;
         }
     })
     document.getElementById('createFranklinSite').addEventListener('click', async () => {

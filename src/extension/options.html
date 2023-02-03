@@ -12,155 +12,171 @@ governing permissions and limitations under the License.
 -->
 <html>
 <head>
-  <meta http-equiv="Content-Security-Policy" content="script-src * 'unsafe-inline' blob: data: filesystem:">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Franklin Sidekick</title>
-	<link rel="stylesheet" type="text/css" href="./options.css" />
-  <link rel="stylesheet" type="text/css" href="./hellofranklin.css" />
-  <script src="./options.js" type="module"></script>
-  <template id="configEditorTemplate">
-    <div id="configEditor" class="config">
-      <div>
-        <p><input type="text" id="edit-project"></p>
-        <p class="mandatory"><input type="url" id="edit-giturl"></p>
-        <p class="mandatory"><input type="url" id="edit-mountpoints"></p>
-        <p><input type="text" id="edit-host"></p>
-        <p class="advanced-only">
-          <input type="checkbox" id="edit-devMode">
-          <label for="edit-devMode"></label>
-        </p>
-        <p>
-          <button></button>
-          <button></button>
-        </p>
-      </div>
-    </div>
-  </template>
+    <meta http-equiv="Content-Security-Policy" content="script-src * 'unsafe-inline' blob: data: filesystem:">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Franklin Sidekick</title>
+    <link rel="stylesheet" type="text/css" href="./options.css"/>
+    <link rel="stylesheet" type="text/css" href="./hellofranklin.css"/>
+    <script src="./options.js" type="module"></script>
+    <template id="configEditorTemplate">
+        <div id="configEditor" class="config">
+            <div>
+                <p><input type="text" id="edit-project"></p>
+                <p class="mandatory"><input type="url" id="edit-giturl"></p>
+                <p class="mandatory"><input type="url" id="edit-mountpoints"></p>
+                <p><input type="text" id="edit-host"></p>
+                <p class="advanced-only">
+                    <input type="checkbox" id="edit-devMode">
+                    <label for="edit-devMode"></label>
+                </p>
+                <p>
+                    <button></button>
+                    <button></button>
+                </p>
+            </div>
+        </div>
+    </template>
 </head>
 <body>
-	<header>
-		<h1>__MSG_title__</h1>
-  </header>
-  <main>
+<header>
+    <h1>__MSG_title__</h1>
+</header>
+<main>
     <nav>
-      <a id="navToggle" href="#" title="__MSG_config_toggle_menu__"><span class="menu-container"><i class="menu"></i></span></a>
-      <ul>
-        <li><a href="__MSG_docs__" target="_blank" title="__MSG_help__">__MSG_help__</a></li>
-      </ul>
+        <a id="navToggle" href="#" title="__MSG_config_toggle_menu__"><span class="menu-container"><i class="menu"></i></span></a>
+        <ul>
+            <li><a href="__MSG_docs__" target="_blank" title="__MSG_help__">__MSG_help__</a></li>
+        </ul>
     </nav>
     <div>
-      <h2>__MSG_hf1click__</h2>
+        <h2>__MSG_hf1click__</h2>
 
-    <div id="one-click-site" class="area expanded">
-      <h3> Name </h3>
-      <input type="url" id="siteName" placeholder="__MSG_quick_franklin_name_description__" required>
-      <br><label id="nameValidationErrors"></label><br>
+        <div id="one-click-site" class="area expanded">
+            <h3> Name </h3>
+            <input type="url" id="siteName" placeholder="__MSG_quick_franklin_name_description__" required>
+            <br><label id="nameValidationErrors"></label><br>
 
-      <h3> Templates </h3>
+            <h3> Templates </h3>
 
-      <div class="template-grid">
+            <div class="template-grid">
 
-        <div class="template-card">
-          <h4> Blank Site</h4>
-          <input name="template-type" class="radio" type="radio" value="blanksite" >
+                <div class="template-card">
+                    <h4> Blank Site</h4>
+                    <input name="template-type" class="radio" type="radio" value="blanksite">
+
+                </div>
+
+                <div class="template-card">
+                    <h4> Franklin Sample Site </h4>
+                    <input name="template-type" class="radio" type="radio" value="defaultsite" checked="checked">
+
+                </div>
+
+            </div>
+            <div class="create-button-container">
+                <button id="createFranklinSite">__MSG_quick_franklin_button_description__</button>
+            </div>
+            <br>
+            <label id="progress_label"></label>
+            <progress id="progress_bar" max="100" value="0"></progress>
 
         </div>
+        <div id="projects" class="area expanded">
+            <h2>__MSG_config_projects__ <span id="projects_num"></span></h2>
+            <div id="configs"></div>
 
-        <div class="template-card">
-          <h4> Franklin Sample Site </h4>
-          <input name="template-type" class="radio" type="radio" value="defaultsite" checked="checked">
-
+            <div>
+                <div>
+                    <h3>__MSG_config_shareurl_title__</h3>
+                    <p class="help">__MSG_config_shareurl_description__</p>
+                    <p class="mandatory"><input type="url" id="shareurl"
+                                                placeholder="__MSG_config_shareurl_placeholder__"></p>
+                    <p>
+                        <button id="addShareConfigButton" title="__MSG_add__">__MSG_add__</button>
+                    </p>
+                </div>
+            </div>
+            <div>
+                <div>
+                    <h3>__MSG_config_manual_title__</h3>
+                    <p class="mandatory"><input type="url" id="giturl"
+                                                placeholder="__MSG_config_manual_giturl_placeholder__"></p>
+                    <p><input type="text" id="project" placeholder="__MSG_config_manual_project_placeholder__"></p>
+                    <p>
+                        <button id="addManualConfigButton" title="__MSG_add__">__MSG_add__</button>
+                    </p>
+                </div>
+            </div>
         </div>
-
-      </div>
-
-      <button id="createFranklinSite"  >__MSG_quick_franklin_button_description__</button>
-        <br>
-      <label id="progress_label"></label>
-      <progress id="progress_bar" max="100" value="0"></progress>
-
+        <div id="ux" class="area">
+            <h2>__MSG_config_ux__</h2>
+            <div>
+                <h3>__MSG_push_down_content__</h3>
+                <input type="checkbox" id="pushDownSwitch">
+                <label for="pushDownSwitch">__MSG_push_down_content__</label>
+                <p class="help">__MSG_push_down_content_description__</p>
+            </div>
+            <div>
+                <h3>__MSG_help__</h3>
+                <input type="checkbox" id="helpOptOutSwitch">
+                <label for="helpOptOutSwitch">__MSG_help_opt_out__</label>
+                <h4>__MSG_help_user_status__</h4>
+                <p class="help">__MSG_help_user_status_description__</p>
+                <p id="helpTopics"></p>
+                <p>
+                    <button id="helpTopicsCheckAll" title="__MSG_help_user_status_check_all__" disabled>
+                        __MSG_help_user_status_check_all__
+                    </button>
+                    <button id="helpTopicsUncheckAll" title="__MSG_help_user_status_uncheck_all__" disabled>
+                        __MSG_help_user_status_uncheck_all__
+                    </button>
+                </p>
+            </div>
+        </div>
+        <div id="backup" class="area advanced-only">
+            <h2>__MSG_config_backup__</h2>
+            <div>
+                <div>
+                    <h3>__MSG_config_import__</h3>
+                    <p class="help">__MSG_config_import_description__</p>
+                    <p><input id="importFile" type="file" title="__MSG_config_import__" accept="application/json"></p>
+                </div>
+            </div>
+            <div>
+                <div>
+                    <h3>__MSG_config_export__</h3>
+                    <p class="help">__MSG_config_export_description__</p>
+                    <p>
+                        <button id="exportButton" title="__MSG_config_export__">__MSG_config_export__</button>
+                    </p>
+                </div>
+            </div>
+        </div>
+        <div id="development" class="area advanced-only">
+            <h2>__MSG_config_development__</h2>
+            <div>
+                <p class="warn">__MSG_caution_side_effects__</p></div>
+            <h3>__MSG_admin_version__</h3>
+            <p class="warn">__MSG_admin_version_description__</p>
+            <p><input type="text" class="version" id="adminVersion" placeholder="__MSG_admin_version_placeholder__"></p>
+            <p>
+                <button id="adminVersionSave" title="__MSG_save__">__MSG_save__</button>
+                <button id="adminVersionReset" title="__MSG_config_reset__">__MSG_config_reset__</button>
+            </p>
+        </div>
     </div>
-    <div id="projects" class="area expanded">
-      <h2>__MSG_config_projects__ <span id="projects_num"></span></h2>
-      <div id="configs"></div>
-
-        <div>
-          <div>
-            <h3>__MSG_config_shareurl_title__</h3>
-            <p class="help">__MSG_config_shareurl_description__</p>
-            <p class="mandatory"><input type="url" id="shareurl" placeholder="__MSG_config_shareurl_placeholder__"></p>
-            <p><button id="addShareConfigButton" title="__MSG_add__">__MSG_add__</button></p>
-          </div>
-        </div>
-        <div>
-          <div>
-            <h3>__MSG_config_manual_title__</h3>
-            <p class="mandatory"><input type="url" id="giturl" placeholder="__MSG_config_manual_giturl_placeholder__"></p>
-            <p><input type="text" id="project" placeholder="__MSG_config_manual_project_placeholder__"></p>
-            <p><button id="addManualConfigButton" title="__MSG_add__">__MSG_add__</button></p>
-          </div>
-        </div>
-      </div>
-      <div id="ux" class="area">
-        <h2>__MSG_config_ux__</h2>
-        <div>
-          <h3>__MSG_push_down_content__</h3>
-          <input type="checkbox" id="pushDownSwitch">
-          <label for="pushDownSwitch">__MSG_push_down_content__</label>
-          <p class="help">__MSG_push_down_content_description__</p>
-        </div>
-        <div>
-          <h3>__MSG_help__</h3>
-          <input type="checkbox" id="helpOptOutSwitch">
-          <label for="helpOptOutSwitch">__MSG_help_opt_out__</label>
-          <h4>__MSG_help_user_status__</h4>
-          <p class="help">__MSG_help_user_status_description__</p>
-          <p id="helpTopics"></p>
-          <p>
-            <button id="helpTopicsCheckAll" title="__MSG_help_user_status_check_all__" disabled>__MSG_help_user_status_check_all__</button>
-            <button id="helpTopicsUncheckAll" title="__MSG_help_user_status_uncheck_all__" disabled>__MSG_help_user_status_uncheck_all__</button>
-          </p>
-        </div>
-      </div>
-      <div id="backup" class="area advanced-only">
-        <h2>__MSG_config_backup__</h2>
-        <div>
-          <div>
-            <h3>__MSG_config_import__</h3>
-            <p class="help">__MSG_config_import_description__</p>
-            <p><input id="importFile" type="file" title="__MSG_config_import__" accept="application/json"></p>
-         </div>
-        </div>
-        <div>
-          <div>
-            <h3>__MSG_config_export__</h3>
-            <p class="help">__MSG_config_export_description__</p>
-            <p><button id="exportButton" title="__MSG_config_export__">__MSG_config_export__</button></p>
-          </div>
-        </div>
-      </div>
-      <div id="development" class="area advanced-only">
-        <h2>__MSG_config_development__</h2>
-        <div>
-          <p class="warn">__MSG_caution_side_effects__</p></div>
-          <h3>__MSG_admin_version__</h3>
-          <p class="warn">__MSG_admin_version_description__</p>
-          <p><input type="text" class="version" id="adminVersion" placeholder="__MSG_admin_version_placeholder__"></p>
-          <p>
-            <button id="adminVersionSave" title="__MSG_save__">__MSG_save__</button>
-            <button id="adminVersionReset" title="__MSG_config_reset__">__MSG_config_reset__</button>
-          </p>
-        </div>
-      </div>
-      <div id="reset" class="area advanced-only">
+    <div id="reset" class="area advanced-only">
         <h2>__MSG_config_reset__</h2>
         <div class="warn">
-          <div>
-            <p>__MSG_config_delete_all_description__</p>
-            <p><button id="resetButton" class="warn" title="__MSG_config_delete_all__">__MSG_config_delete_all__</button></p>
-          </div>
+            <div>
+                <p>__MSG_config_delete_all_description__</p>
+                <p>
+                    <button id="resetButton" class="warn" title="__MSG_config_delete_all__">__MSG_config_delete_all__
+                    </button>
+                </p>
+            </div>
         </div>
-      </div>
-    </main>
+    </div>
+</main>
 </body>
 </html>

@@ -1,14 +1,13 @@
 
 
 :root {
-  --color-green: #558309;
+  --color-black: #000000;
   --color-gray: #e2ebf6;
+  --color-disabled-grey: #d9dbdb;
 }
 
 button {
-  background-color: var(--color-green);
   padding: 2%;
-  color: var(--color-gray);
   border-radius: 10px;
   border: none;
   width: fit-content;
@@ -16,17 +15,14 @@ button {
   font-size: 18px;
 }
 
-
 input[type="text"],input[type="url"] {
   font-size: 18px;
-  color: var(--color-green);
   border-radius: 10px;
   height: 40px;
   padding: 0px 10px;
 }
 
 progress#progressbar {
-  background-color: var(--color-green);
   border-radius: 2px;
   box-shadow: 0 2px 3px rgba(0, 0, 0, 0.25) inset;
 
@@ -46,21 +42,19 @@ div.template-grid {
 
 div.template-grid div {
   display: inline-block;
-  color: var(--color-green);
   text-align: center;
   padding: 14px;
   text-decoration: none;
 }
 
 div.template-grid div:hover {
-  border-color: var(--color-green);
   background-color: var(--color-gray);
 
 }
 
 div.template-card{
 width: 200px;
-border:2px solid var(--color-green);
+border:2px solid var(--color-black);
 border-radius: 10px;
 }
 
@@ -73,5 +67,9 @@ border-radius: 10px;
 }
 #nameValidationErrors{
   font-size: small;
+}
+
+button:disabled {
+  background: var(--color-disabled-grey);
 }
 
