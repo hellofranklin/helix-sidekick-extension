@@ -50,6 +50,7 @@ function sendStatusMessage(statusMessage, percentCompletion) {
 }
 
 function handleErrors(data) {
+  log.error(`Handling Error : ${JSON.stringify(data)}`);
   let errormsg;
   if (data.error) {
     if (data.error.message) {
@@ -249,7 +250,7 @@ async function getTemplateFolderId(templatesFolderID, templateName, googleAccess
     headers: { Authorization: `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
   });
   const responseJson = await response.json();
-
+  handleErrors(responseJson);
   for (const item of responseJson.files) {
     if (item.name === templateName) return item.id;
   }

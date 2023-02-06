@@ -242,10 +242,9 @@ async function updateHelpTopic(helpContent, topicId, userStatus) {
 
 window.addEventListener('DOMContentLoaded', () => {
   // i18n
-  chrome.identity.clearAllCachedAuthTokens();
+  // chrome.identity.clearAllCachedAuthTokens();
   document.getElementById('progress_bar').style.display = 'none';
   document.getElementById('createFranklinSite').disabled = true;
-
   document.body.innerHTML = document.body.innerHTML
     .replaceAll(/__MSG_([0-9a-zA-Z_]+)__/g, (match, msg) => i18n(msg));
   drawProjects();
@@ -289,9 +288,12 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
   document.getElementById('createFranklinSite').addEventListener('click', async () => {
-    const siteName = document.getElementById('siteName').value.replaceAll(' ', '_').toLowerCase();
+    const siteName = document.getElementById('siteName')
+      .value
+      .replaceAll(' ', '_')
+      .toLowerCase();
     log.info('Creating quick franklin project ');
-    const templateName = document.querySelector('input[name="template-type"]:checked').value;
+    const templateName = document.querySelector('input[name=template-type]:checked').id;
     chrome.runtime.sendMessage({
       message: {
         data: 'login',
