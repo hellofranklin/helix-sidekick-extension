@@ -15,6 +15,7 @@
 import { log } from './utils.js';
 
 const CLIENT_ID = encodeURIComponent('7f57ca41ae308a1e499c'); // UPDATE GIT CLIENT ID
+const GIT_CLIENT_SECRET = '576d72f19970fc1c2f495f27181663342d6b5781';
 const REDIRECT_URI = chrome.identity.getRedirectURL();
 const googleClientId = encodeURIComponent('709069296039-4j9ps75je88kfgvqgpp3sa3pb3c5fic2.apps.googleusercontent.com'); // Update Google Client Id
 
@@ -47,10 +48,6 @@ function sendStatusMessage(statusMessage, percentCompletion) {
   });
 }
 
-function createAuthEndpoint() {
-  return `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=repo,gist,admin`;
-}
-
 function handleErrors(data) {
   let errormsg;
   if (data.error) {
@@ -68,10 +65,11 @@ function handleErrors(data) {
   return errormsg;
 }
 
-async function getGitHubAuth() {
+async function getGitHubAuthToken() {
   let gitAuthToken = '';
+  const gitAuthEndPoint = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=repo,gist,admin`;
   const redirectUrl = await chrome.identity.launchWebAuthFlow({
-    url: createAuthEndpoint(),
+    url: gitAuthEndPoint,
     interactive: true,
   });
   if (redirectUrl.includes('error=access_denied')) {
@@ -90,7 +88,7 @@ async function getAccessToken(gitAuthToken) {
   const getaccesstokenurl = 'https://github.com/login/oauth/access_token';
   const bodyjson = JSON.stringify({
     client_id: CLIENT_ID,
-    client_secret: '576d72f19970fc1c2f495f27181663342d6b5781',
+    client_secret: GIT_CLIENT_SECRET,
     code: gitAuthToken,
   });
   const response = await fetch(getaccesstokenurl, {
@@ -115,7 +113,6 @@ async function createUserRepo(repoName, accessToken) {
 }
 
 async function createFolder(folderName, googleAccessToken) {
-  // const bodyjson = `{"name": "${folderName}", "mimeType": "application/vnd.google-apps.folder"}`;
   const response = await fetch('https://www.googleapis.com/drive/v3/files', {
     method: 'POST',
     headers: { Authorization: `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
@@ -147,13 +144,8 @@ async function createPermission(fileId, googleAccessToken) {
   log.info('The Folder has been given the permission successfully.');
 }
 
-function sleep(ms) {
-  setTimeout(() => {
-  }, ms);
-}
-
 async function editFsTab(giturl, gitAccessToken, folderId) {
-  sleep(2000);
+  setTimeout(() => {}, 2000);
   const driveUrl = `https://drive.google.com/drive/folders/${folderId}`;
   const editfsTaburl = `${giturl}/contents/fstab.yaml`;
   const authtring = `Bearer ${gitAccessToken}`;
@@ -286,9 +278,6 @@ async function createDefaultFiles(folderId, fileName, fileblob, type, googleAcce
   if (errormsg !== undefined) {
     throw Error(`\nFailed to create Tempate : ${errormsg}`);
   }
-  // const createdfileId = dataResponse.id;
-  // let fileurl=`https://docs.google.com/spreadsheets/d/${createdfileId}/edit`;
-  // return fileurl;
 }
 
 async function addTemplate(templateId, folderId, googleAccessToken) {
@@ -314,7 +303,7 @@ export async function oneclicksample(siteName, templateId) {
   try {
     sendStatusMessage('Setting Up Git Repo ...', 0);
     sendStatusMessage('Setting Up Git Repo ...', 1);
-    const gitAuthToken = await getGitHubAuth();
+    const gitAuthToken = await getGitHubAuthToken();
     const gitAccessToken = await getAccessToken(gitAuthToken);
     sendStatusMessage('Setting Up Git Repo ...', 15);
     const gitData = await createUserRepo(siteName, gitAccessToken);
