@@ -17,16 +17,12 @@ import { log } from './utils.js';
 const CLIENT_ID = encodeURIComponent('7f57ca41ae308a1e499c'); // UPDATE GIT CLIENT ID
 const REDIRECT_URI = chrome.identity.getRedirectURL();
 const googleClientId = encodeURIComponent('709069296039-4j9ps75je88kfgvqgpp3sa3pb3c5fic2.apps.googleusercontent.com'); // Update Google Client Id
-let googleAccessToken = '';
 
-function createGoogleAuthUrl() {
+async function getGoogleAccessToken() {
   const googleScope = encodeURIComponent('https://www.googleapis.com/auth/drive');
-  return `https://accounts.google.com/o/oauth2/v2/auth?scope=${googleScope}&include_granted_scopes=true&response_type=token&state=state_parameter_passthrough_value&redirect_uri=${REDIRECT_URI}&client_id=${googleClientId}`;
-}
-
-async function getGoogleAuth() {
+  const googleAuthURL = `https://accounts.google.com/o/oauth2/v2/auth?scope=${googleScope}&include_granted_scopes=true&response_type=token&state=state_parameter_passthrough_value&redirect_uri=${REDIRECT_URI}&client_id=${googleClientId}`;
   const redirectUrl = await chrome.identity.launchWebAuthFlow({
-    url: createGoogleAuthUrl(),
+    url: googleAuthURL,
     interactive: true,
   });
   if (chrome.runtime.lastError) {
@@ -34,9 +30,11 @@ async function getGoogleAuth() {
   } else if (redirectUrl.includes('access_denied')) {
     // sendResponse({ message: 'fail' });
   } else {
-    googleAccessToken = redirectUrl.substring(redirectUrl.indexOf('access_token=') + 13);
+    let googleAccessToken = redirectUrl.substring(redirectUrl.indexOf('access_token=') + 13);
     googleAccessToken = googleAccessToken.substring(0, googleAccessToken.indexOf('&'));
+    return googleAccessToken;
   }
+  return null;
 }
 
 function sendStatusMessage(statusMessage, percentCompletion) {
@@ -116,7 +114,7 @@ async function createUserRepo(repoName, accessToken) {
   return response.json();
 }
 
-async function createFolder(folderName) {
+async function createFolder(folderName, googleAccessToken) {
   // const bodyjson = `{"name": "${folderName}", "mimeType": "application/vnd.google-apps.folder"}`;
   const response = await fetch('https://www.googleapis.com/drive/v3/files', {
     method: 'POST',
@@ -132,7 +130,7 @@ async function createFolder(folderName) {
   return data.id;
 }
 
-async function createPermission(fileId) {
+async function createPermission(fileId, googleAccessToken) {
   const bodyjson = { role: 'writer', type: 'user', emailAddress: 'helix@adobe.com' };
 
   const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
@@ -251,7 +249,7 @@ async function getDocument(documentId) {
   return data.blob();
 }
 
-async function createDefaultFiles(folderId, fileName, fileblob, type) {
+async function createDefaultFiles(folderId, fileName, fileblob, type, googleAccessToken) {
   const url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable';
   let uploadContentType;
   let mimeType;
@@ -293,17 +291,17 @@ async function createDefaultFiles(folderId, fileName, fileblob, type) {
   // return fileurl;
 }
 
-async function addTemplate(templateId, folderId) {
+async function addTemplate(templateId, folderId, googleAccessToken) {
   const spreadsheetEntries = propertiesObject.sites[templateId].excel;
   if (spreadsheetEntries !== undefined) {
     for (const fileName of Object.keys(spreadsheetEntries)) {
-      createDefaultFiles(folderId, fileName, getSpreadsheet(spreadsheetEntries[fileName]), 'excel');
+      createDefaultFiles(folderId, fileName, getSpreadsheet(spreadsheetEntries[fileName]), 'excel', googleAccessToken);
     }
   }
   const documentEntries = propertiesObject.sites[templateId].word;
   if (documentEntries !== undefined) {
     for (const fileName of Object.keys(documentEntries)) {
-      createDefaultFiles(folderId, fileName, getDocument(documentEntries[fileName]), 'word');
+      createDefaultFiles(folderId, fileName, getDocument(documentEntries[fileName]), 'word', googleAccessToken);
     }
   }
 }
@@ -324,16 +322,16 @@ export async function oneclicksample(siteName, templateId) {
     const giturl = gitData.url;
     const gitcloneUrl = gitData.clone_url;
     sendStatusMessage('Setting up Google Drive folder...', 40);
-    await getGoogleAuth();
-    const folderId = await createFolder(siteName);
+    const googleAccessToken = await getGoogleAccessToken();
+    const targetFolderId = await createFolder(siteName, googleAccessToken);
     sendStatusMessage('Google Drive folder created successfully', 50);
     sendStatusMessage('Giving Permission to Google Drive', 53);
-    await createPermission(folderId);
+    await createPermission(targetFolderId, googleAccessToken);
     sendStatusMessage('Giving Permission to Google Drive', 60);
     sendStatusMessage('Updating FsTab', 65);
-    await editFsTab(giturl, gitAccessToken, folderId);
+    await editFsTab(giturl, gitAccessToken, targetFolderId);
     sendStatusMessage('Adding Templates', 75);
-    await addTemplate(templateId, folderId);
+    await addTemplate(templateId, targetFolderId, googleAccessToken);
     sendStatusMessage('Templates Added Templates', 85);
     sendStatusMessage('Setup Helix Bot', 90);
     await installHelixbot();
