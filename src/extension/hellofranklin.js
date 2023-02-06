@@ -17,6 +17,7 @@ import { log } from './utils.js';
 const CLIENT_ID = encodeURIComponent('7f57ca41ae308a1e499c'); // UPDATE GIT CLIENT ID
 const GIT_CLIENT_SECRET = '576d72f19970fc1c2f495f27181663342d6b5781';
 const REDIRECT_URI = chrome.identity.getRedirectURL();
+const TEMPLATE_FOLDER_ID = '1-5OSYB0kEPYD3q8JB0MvMVv-2ZaErbak';
 const googleClientId = encodeURIComponent('709069296039-4j9ps75je88kfgvqgpp3sa3pb3c5fic2.apps.googleusercontent.com'); // Update Google Client Id
 
 async function getGoogleAccessToken() {
@@ -189,49 +190,8 @@ function publish(gitcloneUrl) {
   });
 }
 
-const propertiesObject = {
-  sites: {
-    blanksite: {
-      word: {
-        index: '1oG9poB0D9SPEx92D0kxe2Q-uO9quqiNbErrEWSZsh44',
-      },
-    },
-    defaultsite: {
-      word: {
-        index: '1ao14f64ZAHthC0xpOr4ZOfo-dUV6TE_Qa-niI-j3I8Y',
-        nav: '1XiPVdcZpNAb8ITb3uID_wOV6hhsYg0Fn8VHNK81Ym7M',
-        footer: '13zXdOAzdHUpsxeyDQ7-PKnRDS0mv7PCc_DNWwVXW0-E',
-      },
-    },
-  },
-  forms: {
-    calculator: {
-      excel: {
-        form: '1MBtNndkERWsS9Nhgu2NflcSWMuH9xFiM',
-        calculator: '1nK4osdexA1iqakH7lMDRvxdPO-IBgEI_',
-        personalLoan2: '1awbuiTxtIikPj7-mKFxDNPisAcp-elRh',
-      },
-      word: {
-        form: '1P2VcrTJwFgJvglTwcCrcaT0ZNrHVspF-',
-        index: '1BlbqQmRAVe3iXHqYSHLJY191Mgx-OFcn',
-      },
-    },
-  },
-};
-
-async function getSpreadsheet(sheetId) {
-  const url = `https://docs.google.com/spreadsheets/d/${sheetId}/export?format=xlsx`;
-  let data;
-  try {
-    data = await fetch(url);
-  } catch (e) {
-    log.error(' failed to fetch the deafult spreadsheet : ', e);
-  }
-  return data.blob();
-}
-
-async function getDocument(documentId) {
-  const url = `https://docs.google.com/document/d/${documentId}/export?format=docx`;
+async function getFile(documentId, docType) {
+  const url = `https://docs.google.com/document/d/${documentId}/export?format=${docType}`;
   let data;
   try {
     data = await fetch(url);
@@ -241,14 +201,14 @@ async function getDocument(documentId) {
   return data.blob();
 }
 
-async function createDefaultFiles(folderId, fileName, fileblob, type, googleAccessToken) {
+async function uploadFile(folderId, fileName, fileblob, docType, googleAccessToken) {
   const url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable';
   let uploadContentType;
   let mimeType;
-  if (type === 'excel') {
+  if (docType === 'xlsx') {
     uploadContentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     mimeType = 'application/vnd.google-apps.spreadsheet';
-  } else if (type === 'word') {
+  } else if (docType === 'docx') {
     uploadContentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     mimeType = 'application/vnd.google-apps.document';
   }
@@ -267,7 +227,6 @@ async function createDefaultFiles(folderId, fileName, fileblob, type, googleAcce
     throw Error(`\nFailed to create Tempate : ${errormsg}`);
   }
   const location = metaResponse.headers.get('location');
-  // log.info("file location is : " + location);
   const response2 = await fetch(location, {
     method: 'PUT',
     headers: { Authorization: `Bearer ${googleAccessToken}` },
@@ -280,17 +239,58 @@ async function createDefaultFiles(folderId, fileName, fileblob, type, googleAcce
   }
 }
 
-async function addTemplate(templateId, folderId, googleAccessToken) {
-  const spreadsheetEntries = propertiesObject.sites[templateId].excel;
-  if (spreadsheetEntries !== undefined) {
-    for (const fileName of Object.keys(spreadsheetEntries)) {
-      createDefaultFiles(folderId, fileName, getSpreadsheet(spreadsheetEntries[fileName]), 'excel', googleAccessToken);
-    }
+async function getTemplateFolderId(templatesFolderID, templateName, googleAccessToken) {
+  const params = new URLSearchParams({
+    q: `'${templatesFolderID}' in parents and name='${templateName}'`,
+  });
+  const driveURL = `https://www.googleapis.com/drive/v3/files?${params}`;
+  const response = await fetch(driveURL, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
+  });
+  const responseJson = await response.json();
+
+  for (const item of responseJson.files) {
+    if (item.name === templateName) return item.id;
   }
-  const documentEntries = propertiesObject.sites[templateId].word;
-  if (documentEntries !== undefined) {
-    for (const fileName of Object.keys(documentEntries)) {
-      createDefaultFiles(folderId, fileName, getDocument(documentEntries[fileName]), 'word', googleAccessToken);
+  return null;
+}
+
+async function getFolderItemsByID(templateFolderID, googleAccessToken) {
+  const params = new URLSearchParams({
+    q: `'${templateFolderID}' in parents`,
+  });
+  const driveURL = `https://www.googleapis.com/drive/v3/files?${params}`;
+  const response = await fetch(driveURL, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
+  });
+  const responseJson = await response.json();
+  return responseJson.files;
+}
+
+function getDocumentType(fileMimeType) {
+  if (fileMimeType === 'application/vnd.google-apps.spreadsheet') return 'xlsx';
+  else if (fileMimeType === 'application/vnd.google-apps.document') {
+    return 'docx';
+  } else if (fileMimeType === 'application/vnd.google-apps.folder') {
+    return 'folder';
+  } else {
+    return 'file';
+  }
+}
+
+async function addTemplate(tempName, targetFolderId, gAccessToken) {
+  const templateFolderId = await getTemplateFolderId(TEMPLATE_FOLDER_ID, tempName, gAccessToken);
+  const templateFiles = await getFolderItemsByID(templateFolderId, gAccessToken);
+
+  for (const tempFile of templateFiles) {
+    const documentType = getDocumentType(tempFile.mimeType);
+    if (documentType === 'xlsx' || documentType === 'docx') {
+      const dataBlob = getFile(tempFile.id, documentType);
+      dataBlob.then((result) => {
+        uploadFile(targetFolderId, tempFile.name, result, documentType, gAccessToken);
+      });
     }
   }
 }
@@ -299,7 +299,7 @@ async function installHelixbot() {
   chrome.identity.launchWebAuthFlow({ url: 'https://github.com/apps/helix-bot', interactive: true });
 }
 
-export async function oneclicksample(siteName, templateId) {
+export async function oneclicksample(siteName, templateName) {
   try {
     sendStatusMessage('Setting Up Git Repo ...', 0);
     sendStatusMessage('Setting Up Git Repo ...', 1);
@@ -320,7 +320,7 @@ export async function oneclicksample(siteName, templateId) {
     sendStatusMessage('Updating FsTab', 65);
     await editFsTab(giturl, gitAccessToken, targetFolderId);
     sendStatusMessage('Adding Templates', 75);
-    await addTemplate(templateId, targetFolderId, googleAccessToken);
+    await addTemplate(templateName, targetFolderId, googleAccessToken);
     sendStatusMessage('Templates Added Templates', 85);
     sendStatusMessage('Setup Helix Bot', 90);
     await installHelixbot();
@@ -331,66 +331,3 @@ export async function oneclicksample(siteName, templateId) {
     sendStatusMessage(`Failed to create Franklin Project \n${e.message}`, 0);
   }
 }
-
-// async function createindexFile(fileId) {
-//   const url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable';
-//   log.info(`Creating an Index File ${googleAccessToken}`);
-
-//   const response = await fetch(url, {
-//     method: 'POST',
-//     headers: {
-//       Authorization: `Bearer ${googleAccessToken}`,
-//       'Content-Type': 'application/json',
-//       'X-Upload-Content-Type':
-// 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-//     },
-//     body: JSON.stringify(
-// { name: 'index', mimeType: 'application/vnd.google-apps.document', parents: [fileId] }),
-//   });
-//   const metaResponse = await response;
-//   const location = metaResponse.headers.get('location');
-//   log.info(`location is : ${location}`);
-//   const response2 = await fetch(location, {
-//     method: 'PUT',
-//     headers: { Authorization: `Bearer ${googleAccessToken}` },
-//     body: await getDefaultDocument(),
-//   });
-//   const dataResponse = await response2.json();
-//   log.info(`Response for creation is : ${JSON.stringify(dataResponse)}`);
-//   const createdfileId = dataResponse.id;
-//   const fileurl = `https://docs.google.com/document/d/${createdfileId}/edit`;
-//   return fileurl;
-// }
-
-// async function createIndexSpreadsheetFile(folderId) {
-//   const url = 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable';
-//   log.info(`Creating a Spreadsheet File ${googleAccessToken}`);
-
-//   const response = await fetch(url, {
-//     method: 'POST',
-//     headers: {
-//       Authorization: `Bearer ${googleAccessToken}`,
-//       'Content-Type': 'application/json',
-//       'X-Upload-Content-Type':
-//    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-//     },
-//     body: JSON.stringify({
-//       name: 'index',
-//       mimeType: 'application/vnd.google-apps.spreadsheet',
-//       parents: [folderId],
-//     }),
-//   });
-//   const metaResponse = await response;
-//   const location = metaResponse.headers.get('location');
-//   log.info(`speadsheet location is : ${location}`);
-//   const response2 = await fetch(location, {
-//     method: 'PUT',
-//     headers: { Authorization: `Bearer ${googleAccessToken}` },
-//     body: await getDeafaultSpreadsheet(),
-//   });
-//   const dataResponse = await response2.json();
-//   log.info(`Response for spreadsheet creation is : ${JSON.stringify(dataResponse)}`);
-//   const createdfileId = dataResponse.id;
-//   const fileurl = `https://docs.google.com/spreadsheets/d/${createdfileId}/edit`;
-//   return fileurl;
-// }

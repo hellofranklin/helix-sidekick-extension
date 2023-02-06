@@ -291,11 +291,11 @@ window.addEventListener('DOMContentLoaded', () => {
   document.getElementById('createFranklinSite').addEventListener('click', async () => {
     const siteName = document.getElementById('siteName').value;
     log.info('Creating quick franklin project ');
-    const templateId = document.querySelector('input[name="template-type"]:checked').value;
+    const templateName = document.querySelector('input[name="template-type"]:checked').value;
     chrome.runtime.sendMessage({
       message: {
         data: 'login',
-        templateId,
+        templateName,
         siteName,
       },
     }, (response) => {
@@ -522,9 +522,8 @@ window.addEventListener('DOMContentLoaded', () => {
   });
 });
 
-// neeraj removed sender send response
 chrome.runtime.onMessage.addListener((request) => {
-  if (request.message.data.includes('publish')) {
+  if (request.message !== undefined && request.message.data.includes('publish')) {
     let giturl = '';
     giturl = request.message.gitcloneUrl;
     log.debug(` publish message Recieved : ${JSON.stringify(request)}`);
@@ -534,7 +533,7 @@ chrome.runtime.onMessage.addListener((request) => {
         clearForms();
       }
     });
-  } else if (request.message.data.includes('statusUpdate')) {
+  } else if (request.message !== undefined && request.message.data.includes('statusUpdate')) {
     const progressLabel = document.getElementById('progress_label');
     const progressBar = document.getElementById('progress_bar');
     let percentageText = '';

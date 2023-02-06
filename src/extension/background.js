@@ -424,10 +424,12 @@ getState(({ display }) => {
 });
 
 chrome.runtime.onMessage.addListener((request) => {
-  const { templateId } = request.message;
-  if (request.message.data.includes('login')) {
-    const { siteName } = request.message;
-    oneclicksample(siteName, templateId);
+  if (request.message !== undefined) {
+    const { templateName } = request.message;
+    if (request.message.data.includes('login')) {
+      const { siteName } = request.message;
+      oneclicksample(siteName, templateName);
+    }
   }
   return true;
 });
