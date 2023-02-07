@@ -3,7 +3,7 @@
 :root {
   --color-black: #000000;
   --color-gray: #e2ebf6;
-  --color-dark-gray: #a3abb2;
+  --color-border: #dddddd;
   --color-disabled-grey: #d9dbdb;
   --color-red: #ff0000;
 }
@@ -79,7 +79,7 @@ button:disabled {
 
 #one-click-site{
   padding: 2%;
-  border:1.7px solid var(--color-dark-gray);
+  border:1.7px solid var(--color-border);
   border-radius: 10px;
 }
 
