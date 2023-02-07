@@ -231,10 +231,10 @@
     "message": "New Franklin Site"
   },
   "quick_franklin_button_description": {
-    "message": "Create QuickSite"
+    "message": "Create Site"
   },
   "quick_franklin_button": {
-    "message": "Create QuickSite"
+    "message": "Create Site"
   },
   "quick_franklin_name_description": {
     "message": "Enter project name"

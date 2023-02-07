@@ -48,13 +48,13 @@ governing permissions and limitations under the License.
             <li><a href="__MSG_docs__" target="_blank" title="__MSG_help__">__MSG_help__</a></li>
         </ul>
     </nav>
-    <div>
+
         <h2>__MSG_hf1click__</h2>
 
         <div id="one-click-site" class="area expanded">
             <h4> Name </h4>
             <input type="url" id="siteName" placeholder="__MSG_quick_franklin_name_description__" required>
-            <br><label id="nameValidationErrors"></label><br>
+            <label class="errorText" id="nameValidationErrors"></label>
 
             <h4> Templates </h4>
 
@@ -76,8 +76,9 @@ governing permissions and limitations under the License.
             </div>
             <br>
             <label id="progress_label"></label>
+                <label class="errorText" id="error-text"></label>
             <progress id="progress_bar" max="100" value="0"></progress>
-
+            </div>
         </div>
         <div id="projects" class="area expanded">
             <h2>__MSG_config_projects__ <span id="projects_num"></span></h2>
@@ -162,7 +163,6 @@ governing permissions and limitations under the License.
                 <button id="adminVersionReset" title="__MSG_config_reset__">__MSG_config_reset__</button>
             </p>
         </div>
-    </div>
     <div id="reset" class="area advanced-only">
         <h2>__MSG_config_reset__</h2>
         <div class="warn">

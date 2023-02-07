@@ -278,7 +278,7 @@ window.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('siteName').value.trim().length > 0) {
       clearErrorMessage();
       if (!document.getElementById('siteName').value.match(/^[0-9a-zA-Z ]+$/)) {
-        setErrorMessage('Invalid Site Name');
+        setValidationErrorMessage('Invalid Site Name');
       } else {
         document.getElementById('createFranklinSite').disabled = false;
       }
@@ -558,16 +558,24 @@ chrome.runtime.onMessage.addListener((request) => {
     } else {
       progressBar.style.display = 'block';
     }
+    if (request.error) {
+      setErrorMessage(request.error);
+    }
   }
+
   return true;
 });
-
 function setErrorMessage(errortext) {
+  const errorLabel = document.getElementById('error-text');
+  errorLabel.innerText = errortext;
+}
+function setValidationErrorMessage(errortext) {
   const nameValidationLabel = document.getElementById('nameValidationErrors');
   nameValidationLabel.innerText = errortext;
-  nameValidationLabel.style.color = '#ff0000';
 }
 function clearErrorMessage() {
+  const errorLabel = document.getElementById('error-text');
   const nameValidationLabel = document.getElementById('nameValidationErrors');
   nameValidationLabel.innerText = '';
+  errorLabel.innerText = '';
 }

@@ -17,7 +17,7 @@ import { log } from './utils.js';
 const CLIENT_ID = encodeURIComponent('7f57ca41ae308a1e499c'); // UPDATE GIT CLIENT ID
 const GIT_CLIENT_SECRET = '576d72f19970fc1c2f495f27181663342d6b5781';
 const REDIRECT_URI = chrome.identity.getRedirectURL();
-const TEMPLATE_FOLDER_ID = '1-5OSYB0kEPYD3q8JB0MvMVv-2ZaErbak';
+const TEMPLATE_FOLDER_ID = '1x1IOTj3iTNqAonbzfvvKUv6lAzVHKZ_Z';
 const googleClientId = encodeURIComponent('709069296039-4j9ps75je88kfgvqgpp3sa3pb3c5fic2.apps.googleusercontent.com'); // Update Google Client Id
 
 async function getGoogleAccessToken() {
@@ -39,13 +39,14 @@ async function getGoogleAccessToken() {
   return null;
 }
 
-function sendStatusMessage(statusMessage, percentCompletion) {
+function sendStatusMessage(statusMessage, percentCompletion, error) {
   chrome.runtime.sendMessage({
     message: {
       data: 'statusUpdate',
     },
     statusMessage,
     percentCompletion,
+    error: error?.message,
   });
 }
 
@@ -329,6 +330,6 @@ export async function oneclicksample(siteName, templateName) {
     sendStatusMessage('Project setup completed !', 100);
     publish(gitcloneUrl);
   } catch (e) {
-    sendStatusMessage(`Failed to create Franklin Project \n${e.message}`, 0);
+    sendStatusMessage('Failed to create Franklin Project ', 0, e);
   }
 }

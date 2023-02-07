@@ -3,10 +3,13 @@
 :root {
   --color-black: #000000;
   --color-gray: #e2ebf6;
+  --color-dark-gray: #a3abb2;
   --color-disabled-grey: #d9dbdb;
+  --color-red: #ff0000;
 }
 
 button {
+  margin-top: 3%;
   padding: 2%;
   border-radius: 10px;
   border: none;
@@ -67,9 +70,22 @@ border-radius: 10px;
 }
 #nameValidationErrors{
   font-size: small;
+  font-style: italic;
 }
 
 button:disabled {
   background: var(--color-disabled-grey);
 }
 
+#one-click-site{
+  padding: 2%;
+  border:1.7px solid var(--color-dark-gray);
+  border-radius: 10px;
+}
+
+label.errorText{
+  padding: 2%;
+  font-size: small;
+  font-style: italic;
+  color: var(--color-red);
+}
