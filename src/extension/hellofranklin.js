@@ -83,22 +83,23 @@ async function getGitHubAuthToken() {
   return gitAuthToken;
 }
 
-async function getAccessToken() {
+async function getGithubAccessToken() {
   const gitAuthToken = await getGitHubAuthToken();
-  const getaccesstokenurl = 'https://github.com/login/oauth/access_token';
-  const bodyjson = JSON.stringify({
+  const url = 'https://github.com/login/oauth/access_token';
+  const body = JSON.stringify({
     client_id: CLIENT_ID,
     client_secret: GIT_CLIENT_SECRET,
     code: gitAuthToken,
   });
-  const response = await fetch(getaccesstokenurl, {
+  const response = await fetch(url, {
     method: 'POST',
-    headers: { Authentication: gitAuthToken, 'Content-Type': 'application/json' },
-    body: bodyjson,
+    headers: { Authorization: gitAuthToken, 'Content-Type': 'application/json' },
+    body,
   });
   const data = await response.text();
-  const accessToken = data.substring(data.indexOf('access_token=') + 13);
-  return accessToken.substring(0, accessToken.indexOf('&'));
+  const startIndex = data.indexOf('access_token=') + 13;
+  const endIndex = data.indexOf('&');
+  return data.substring(startIndex, endIndex);
 }
 
 async function createUserRepo(repoName, accessToken) {
@@ -315,7 +316,7 @@ async function installHelixbot() {
 export async function oneclicksample(siteName, templateName) {
   try {
     sendStatusMessage('Setting Up Git Repo ...', 0);
-    const gitAccessToken = await getAccessToken();
+    const gitAccessToken = await getGithubAccessToken();
     sendStatusMessage('Setting Up Git Repo ...', 15);
     const gitData = await createUserRepo(siteName, gitAccessToken);
     sendStatusMessage('Git repo successfully created', 33);
