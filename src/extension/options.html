@@ -48,38 +48,37 @@ governing permissions and limitations under the License.
             <li><a href="__MSG_docs__" target="_blank" title="__MSG_help__">__MSG_help__</a></li>
         </ul>
     </nav>
-    <div>
+
         <h2>__MSG_hf1click__</h2>
 
         <div id="one-click-site" class="area expanded">
-            <h3> Name </h3>
+            <h4> Name </h4>
             <input type="url" id="siteName" placeholder="__MSG_quick_franklin_name_description__" required>
-            <br><label id="nameValidationErrors"></label><br>
+            <label class="errorText" id="nameValidationErrors"></label>
 
-            <h3> Templates </h3>
+            <h4> Templates </h4>
 
-            <div class="template-grid">
-
-                <div class="template-card">
-                    <h4> Blank Site</h4>
-                    <input name="template-type" class="radio" type="radio" value="blanksite">
-
+            <div class="spectrum-FieldGroupInputLayout" aria-describedby="helptext-radio-1">
+                <div class="spectrum-Radio spectrum-FieldGroup-item">
+                    <input type="radio" name="template-type" class="spectrum-Radio-input" id="blanksite">
+                    <span class="spectrum-Radio-button"></span>
+                    <label class="spectrum-Radio-label" for="blanksite">Blank Site</label>
                 </div>
 
-                <div class="template-card">
-                    <h4> Franklin Sample Site </h4>
-                    <input name="template-type" class="radio" type="radio" value="defaultsite" checked="checked">
-
+                <div class="spectrum-Radio spectrum-FieldGroup-item">
+                    <input type="radio" name="template-type" class="spectrum-Radio-input" id="defaultsite" checked="checked">
+                    <span class="spectrum-Radio-button"></span>
+                    <label class="spectrum-Radio-label" for="defaultsite">Franklin Sample Site</label>
                 </div>
 
-            </div>
             <div class="create-button-container">
                 <button id="createFranklinSite">__MSG_quick_franklin_button_description__</button>
             </div>
             <br>
             <label id="progress_label"></label>
+                <label class="errorText" id="error-text"></label>
             <progress id="progress_bar" max="100" value="0"></progress>
-
+            </div>
         </div>
         <div id="projects" class="area expanded">
             <h2>__MSG_config_projects__ <span id="projects_num"></span></h2>
@@ -164,7 +163,6 @@ governing permissions and limitations under the License.
                 <button id="adminVersionReset" title="__MSG_config_reset__">__MSG_config_reset__</button>
             </p>
         </div>
-    </div>
     <div id="reset" class="area advanced-only">
         <h2>__MSG_config_reset__</h2>
         <div class="warn">

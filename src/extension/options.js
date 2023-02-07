@@ -83,7 +83,7 @@ function drawProjects() {
     <button class="editConfig" title="${i18n('config_edit')}">${i18n('config_edit')}</button>
     <button class="deleteConfig" title="${i18n('config_delete')}">${i18n('config_delete')}</button>
   </div>`;
-      section.querySelector('input[type="checkbox').addEventListener('click', async ({ target }) => {
+      section.querySelector('input[type=checkbox]').addEventListener('click', async ({ target }) => {
         const { checked } = target;
         projects[i].disabled = !checked;
         await setProject(projects[i]);
@@ -242,10 +242,9 @@ async function updateHelpTopic(helpContent, topicId, userStatus) {
 
 window.addEventListener('DOMContentLoaded', () => {
   // i18n
-  chrome.identity.clearAllCachedAuthTokens();
+  // chrome.identity.clearAllCachedAuthTokens();
   document.getElementById('progress_bar').style.display = 'none';
   document.getElementById('createFranklinSite').disabled = true;
-
   document.body.innerHTML = document.body.innerHTML
     .replaceAll(/__MSG_([0-9a-zA-Z_]+)__/g, (match, msg) => i18n(msg));
   drawProjects();
@@ -276,10 +275,10 @@ window.addEventListener('DOMContentLoaded', () => {
   });
   // removed evnt from here : neeraj
   document.getElementById('siteName').addEventListener('input', () => {
-    if (document.getElementById('siteName').value.length > 0) {
+    if (document.getElementById('siteName').value.trim().length > 0) {
       clearErrorMessage();
-      if (!document.getElementById('siteName').value.match(/^[0-9a-z]+$/)) {
-        setErrorMessage('Invalid Site Name');
+      if (!document.getElementById('siteName').value.match(/^[0-9a-zA-Z ]+$/)) {
+        setValidationErrorMessage('Invalid Site Name');
       } else {
         document.getElementById('createFranklinSite').disabled = false;
       }
@@ -289,9 +288,12 @@ window.addEventListener('DOMContentLoaded', () => {
     }
   });
   document.getElementById('createFranklinSite').addEventListener('click', async () => {
-    const siteName = document.getElementById('siteName').value;
+    const siteName = document.getElementById('siteName')
+      .value
+      .replaceAll(' ', '_')
+      .toLowerCase();
     log.info('Creating quick franklin project ');
-    const templateName = document.querySelector('input[name="template-type"]:checked').value;
+    const templateName = document.querySelector('input[name=template-type]:checked').id;
     chrome.runtime.sendMessage({
       message: {
         data: 'login',
@@ -524,8 +526,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 chrome.runtime.onMessage.addListener((request) => {
   if (request.message !== undefined && request.message.data.includes('publish')) {
-    let giturl = '';
-    giturl = request.message.gitcloneUrl;
+    const giturl = request.message.gitcloneUrl;
     log.debug(` publish message Recieved : ${JSON.stringify(request)}`);
     addProject({ giturl }, (added) => {
       if (added) {
@@ -557,16 +558,24 @@ chrome.runtime.onMessage.addListener((request) => {
     } else {
       progressBar.style.display = 'block';
     }
+    if (request.error) {
+      setErrorMessage(request.error);
+    }
   }
+
   return true;
 });
-
 function setErrorMessage(errortext) {
+  const errorLabel = document.getElementById('error-text');
+  errorLabel.innerText = errortext;
+}
+function setValidationErrorMessage(errortext) {
   const nameValidationLabel = document.getElementById('nameValidationErrors');
   nameValidationLabel.innerText = errortext;
-  nameValidationLabel.style.color = '#ff0000';
 }
 function clearErrorMessage() {
+  const errorLabel = document.getElementById('error-text');
   const nameValidationLabel = document.getElementById('nameValidationErrors');
   nameValidationLabel.innerText = '';
+  errorLabel.innerText = '';
 }
