@@ -19,6 +19,11 @@ const GIT_CLIENT_SECRET = '576d72f19970fc1c2f495f27181663342d6b5781';
 const REDIRECT_URI = chrome.identity.getRedirectURL();
 const TEMPLATE_FOLDER_ID = '1x1IOTj3iTNqAonbzfvvKUv6lAzVHKZ_Z';
 const googleClientId = encodeURIComponent('709069296039-4j9ps75je88kfgvqgpp3sa3pb3c5fic2.apps.googleusercontent.com'); // Update Google Client Id
+const DOCUMENT_TYPE_MAP = {
+  'application/vnd.google-apps.spreadsheet': 'xlsx',
+  'application/vnd.google-apps.document': 'docx',
+  'application/vnd.google-apps.folder': 'folder',
+};
 
 async function getGoogleAccessToken() {
   const googleScope = encodeURIComponent('https://www.googleapis.com/auth/drive');
@@ -51,21 +56,12 @@ function sendStatusMessage(statusMessage, percentCompletion, error) {
 }
 
 function handleErrors(data) {
-  log.error(`Handling Error : ${JSON.stringify(data)}`);
-  let errormsg;
-  if (data.error) {
-    if (data.error.message) {
-      if (data.error.message.includes('User message')) {
-        errormsg = data.error.message.substring(data.error.message.indexOf('User message') + 14);
-      } else {
-        errormsg = data.error.message;
-      }
-    } else {
-      errormsg = data;
-    }
+  let errorMessage = data.error ? data.error.message : data;
+  if (errorMessage.includes('User message')) {
+    errorMessage = errorMessage.substring(errorMessage.indexOf('User message') + 14);
   }
-  log.error(errormsg);
-  return errormsg;
+  log.error(`Handling Error : ${JSON.stringify(errorMessage)}`);
+  return errorMessage;
 }
 
 async function getGitHubAuthToken() {
@@ -87,21 +83,23 @@ async function getGitHubAuthToken() {
   return gitAuthToken;
 }
 
-async function getAccessToken(gitAuthToken) {
-  const getaccesstokenurl = 'https://github.com/login/oauth/access_token';
-  const bodyjson = JSON.stringify({
+async function getGithubAccessToken() {
+  const gitAuthToken = await getGitHubAuthToken();
+  const url = 'https://github.com/login/oauth/access_token';
+  const body = JSON.stringify({
     client_id: CLIENT_ID,
     client_secret: GIT_CLIENT_SECRET,
     code: gitAuthToken,
   });
-  const response = await fetch(getaccesstokenurl, {
+  const response = await fetch(url, {
     method: 'POST',
-    headers: { Authentication: gitAuthToken, 'Content-Type': 'application/json' },
-    body: bodyjson,
+    headers: { Authorization: gitAuthToken, 'Content-Type': 'application/json' },
+    body,
   });
   const data = await response.text();
-  const accessToken = data.substring(data.indexOf('access_token=') + 13);
-  return accessToken.substring(0, accessToken.indexOf('&'));
+  const startIndex = data.indexOf('access_token=') + 13;
+  const endIndex = data.indexOf('&');
+  return data.substring(startIndex, endIndex);
 }
 
 async function createUserRepo(repoName, accessToken) {
@@ -115,7 +113,7 @@ async function createUserRepo(repoName, accessToken) {
   return response.json();
 }
 
-async function createFolder(folderName, googleAccessToken) {
+async function createGDriveFolder(folderName, googleAccessToken) {
   const response = await fetch('https://www.googleapis.com/drive/v3/files', {
     method: 'POST',
     headers: { Authorization: `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
@@ -194,13 +192,15 @@ function publish(gitcloneUrl) {
 
 async function getFile(documentId, docType) {
   const url = `https://docs.google.com/document/d/${documentId}/export?format=${docType}`;
-  let data;
   try {
-    data = await fetch(url);
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Request failed with status code ${response.status}`);
+    }
+    return response.blob();
   } catch (e) {
-    log.error(' failed to fetch the default Document : ', e);
+    throw new Error(`Failed to fetch the default Document: ${e.message}`);
   }
-  return data.blob();
 }
 
 async function uploadFile(folderId, fileName, fileblob, docType, googleAccessToken) {
@@ -246,16 +246,25 @@ async function getTemplateFolderId(templatesFolderID, templateName, googleAccess
     q: `'${templatesFolderID}' in parents and name='${templateName}'`,
   });
   const driveURL = `https://www.googleapis.com/drive/v3/files?${params}`;
-  const response = await fetch(driveURL, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
-  });
-  const responseJson = await response.json();
-  handleErrors(responseJson);
-  for (const item of responseJson.files) {
-    if (item.name === templateName) return item.id;
+  try {
+    const response = await fetch(driveURL, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+      throw new Error(`Request failed with status code ${response.status}`);
+    }
+    const responseJson = await response.json();
+    if (responseJson.error) {
+      throw new Error(responseJson.error.message);
+    }
+    for (const item of responseJson.files) {
+      if (item.name === templateName) return item.id;
+    }
+    return null;
+  } catch (e) {
+    throw new Error(`Failed to fetch template folder ID: ${e.message}`);
   }
-  return null;
 }
 
 async function getFolderItemsByID(templateFolderID, googleAccessToken) {
@@ -263,23 +272,26 @@ async function getFolderItemsByID(templateFolderID, googleAccessToken) {
     q: `'${templateFolderID}' in parents`,
   });
   const driveURL = `https://www.googleapis.com/drive/v3/files?${params}`;
-  const response = await fetch(driveURL, {
-    method: 'GET',
-    headers: { Authorization: `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
-  });
-  const responseJson = await response.json();
-  return responseJson.files;
+  try {
+    const response = await fetch(driveURL, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+      throw new Error(`Request failed with status code ${response.status}`);
+    }
+    const responseJson = await response.json();
+    if (responseJson.error) {
+      throw new Error(responseJson.error.message);
+    }
+    return responseJson.files;
+  } catch (e) {
+    throw new Error(`Failed to fetch folder items: ${e.message}`);
+  }
 }
 
 function getDocumentType(fileMimeType) {
-  if (fileMimeType === 'application/vnd.google-apps.spreadsheet') return 'xlsx';
-  else if (fileMimeType === 'application/vnd.google-apps.document') {
-    return 'docx';
-  } else if (fileMimeType === 'application/vnd.google-apps.folder') {
-    return 'folder';
-  } else {
-    return 'file';
-  }
+  return DOCUMENT_TYPE_MAP[fileMimeType] || 'file';
 }
 
 async function addTemplate(tempName, targetFolderId, gAccessToken) {
@@ -304,9 +316,7 @@ async function installHelixbot() {
 export async function oneclicksample(siteName, templateName) {
   try {
     sendStatusMessage('Setting Up Git Repo ...', 0);
-    sendStatusMessage('Setting Up Git Repo ...', 1);
-    const gitAuthToken = await getGitHubAuthToken();
-    const gitAccessToken = await getAccessToken(gitAuthToken);
+    const gitAccessToken = await getGithubAccessToken();
     sendStatusMessage('Setting Up Git Repo ...', 15);
     const gitData = await createUserRepo(siteName, gitAccessToken);
     sendStatusMessage('Git repo successfully created', 33);
@@ -314,7 +324,7 @@ export async function oneclicksample(siteName, templateName) {
     const gitcloneUrl = gitData.clone_url;
     sendStatusMessage('Setting up Google Drive folder...', 40);
     const googleAccessToken = await getGoogleAccessToken();
-    const targetFolderId = await createFolder(siteName, googleAccessToken);
+    const targetFolderId = await createGDriveFolder(siteName, googleAccessToken);
     sendStatusMessage('Google Drive folder created successfully', 50);
     sendStatusMessage('Giving Permission to Google Drive', 53);
     await createPermission(targetFolderId, googleAccessToken);
