@@ -120,9 +120,11 @@ async function createGDriveFolder(folderName, googleAccessToken) {
     body: JSON.stringify({ name: folderName, mimeType: 'application/vnd.google-apps.folder' }),
   });
   const data = await response.json();
-  let errormsg;
-  if (handleErrors(data) !== undefined) {
-    throw Error(`\nFailed to create Google drive Folder : ${errormsg}`);
+  if (response.status !== 200) {
+    let errormsg;
+    if (handleErrors(data) !== undefined) {
+      throw Error(`\nFailed to create Google drive Folder : ${errormsg}`);
+    }
   }
   log.info('The Folder has been Created successfully.');
   return data.id;
@@ -137,10 +139,11 @@ async function createPermission(fileId, googleAccessToken) {
     body: JSON.stringify(bodyjson),
   });
   const data = await response.json();
-
-  const errormsg = handleErrors(data);
-  if (errormsg !== undefined) {
-    throw Error(`\nFailed to give permission to Google drive Folder : ${errormsg}`);
+  if (response.status !== 200) {
+    const errormsg = handleErrors(data);
+    if (errormsg !== undefined) {
+      throw Error(`\nFailed to give permission to Google drive Folder : ${errormsg}`);
+    }
   }
   log.info('The Folder has been given the permission successfully.');
 }
@@ -156,9 +159,11 @@ async function editFsTab(giturl, gitAccessToken, folderId) {
   });
 
   const data1 = await response1.json();
-  let errormsg = handleErrors(data1);
-  if (errormsg !== undefined) {
-    throw Error(`\nFailed to update FsTab : ${errormsg}`);
+  if (response1.status !== 200) {
+    const errormsg = handleErrors(data1);
+    if (errormsg !== undefined) {
+      throw Error(`\nFailed to update FsTab : ${errormsg}`);
+    }
   }
   const blobsha = data1.sha;
   const contentString = `mountpoints:
@@ -171,9 +176,11 @@ async function editFsTab(giturl, gitAccessToken, folderId) {
     body: JSON.stringify(bodyjson),
   });
   const data = await response.json();
-  errormsg = handleErrors(data);
-  if (errormsg !== undefined) {
-    throw Error(`\nFailed to update FsTab : ${errormsg}`);
+  if (response.status !== 200) {
+    const errormsg = handleErrors(data);
+    if (errormsg !== undefined) {
+      throw Error(`\nFailed to update FsTab : ${errormsg}`);
+    }
   }
   if (data.commit.message.includes('updated')) {
     log.info(`The FSTab.yaml updated : ${JSON.stringify(data)}`);
@@ -224,9 +231,11 @@ async function uploadFile(folderId, fileName, fileblob, docType, googleAccessTok
     body: JSON.stringify({ name: fileName, mimeType, parents: [folderId] }),
   });
   const metaResponse = await response;
-  let errormsg = handleErrors(metaResponse);
-  if (errormsg !== undefined) {
-    throw Error(`\nFailed to create Tempate : ${errormsg}`);
+  if (metaResponse.status !== 200) {
+    const errormsg = handleErrors(metaResponse);
+    if (errormsg !== undefined) {
+      throw Error(`\nFailed to create Tempate : ${errormsg}`);
+    }
   }
   const location = metaResponse.headers.get('location');
   const response2 = await fetch(location, {
@@ -235,9 +244,11 @@ async function uploadFile(folderId, fileName, fileblob, docType, googleAccessTok
     body: await fileblob,
   });
   const dataResponse = await response2.json();
-  errormsg = handleErrors(dataResponse);
-  if (errormsg !== undefined) {
-    throw Error(`\nFailed to create Tempate : ${errormsg}`);
+  if (dataResponse.status !== 200) {
+    const errormsg = handleErrors(dataResponse);
+    if (errormsg !== undefined) {
+      throw Error(`\nFailed to create Tempate : ${errormsg}`);
+    }
   }
 }
 

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "__MSG_title__",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "author": "Adobe",
   "homepage_url": "https://www.hlx.live/tools/sidekick/",
   "default_locale": "en",
@@ -75,5 +75,5 @@
     "48": "icons/helix_logo_48.png",
     "128": "icons/helix_logo_128.png"
   },
-  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlDDQ1eqHXp8iP0Qk4idYNqeTGki/DYqh1r0upks7sw/gS7ttXH7ALGzYL/kkBkHvTo+NcQsJR1ViYPC/SJGUufq+mhQhviS6dDQMidBRrsxi7TY7dJ+lDSPczM9HBW4Du/SqdisG56hjBVsJuyHUiVa/ei1q/iMWP/NeQaFKeFJZW2kPAm6eMAC+KuR0fOy12l4IzGS4H/LePX22khrobj55b74L1TmjJ1eDIGglrLkHi+EnDXJ3myYkFq5dTFBs4t8CuTwb14EpGksVzD571plFXv9Hp/B53mKAvQKqt1VwdxvUHpqcp85g4xgVAqIszD2YlJDms3wJvLXWZgmNuwIDAQAB"
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAvqCxXttAqOIPKe9snUxQhRJYYPf6/ed9cbxaI9qNM8Ow0gXGuvcrhv4ZJ/EBfbACZG48LDCH68VD8G9xmJC5gwjL5Ao1P3vGBPKHrfCE/Fa0jHO1G0fKNhJM4OV1pPdfBa6+8SX55uepCtS6IreqQz35iCnNswRet19Pwix0bt+HWYrmsAMcqhCbsTCUpUDCrwBUp71vU3GdFBjM/KbIk6udcbKoN7H3+yJRQYLM+q5vZ7IjVg8aakrz1DYHTTZrUakMv+e1rkLqnWlBXdM/OgK/60PCh6thDJIhlAjCCmK2IneLEYOVL4UIrJPMjIZlckjHtyefH7PPz+oHWSM3cQIDAQAB"
 }

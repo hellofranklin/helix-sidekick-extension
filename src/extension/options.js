@@ -241,8 +241,7 @@ async function updateHelpTopic(helpContent, topicId, userStatus) {
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  // i18n
-  // chrome.identity.clearAllCachedAuthTokens();
+  chrome.identity.clearAllCachedAuthTokens();
   document.getElementById('progress_bar').style.display = 'none';
   document.getElementById('createFranklinSite').disabled = true;
   document.body.innerHTML = document.body.innerHTML
