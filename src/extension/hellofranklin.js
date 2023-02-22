@@ -14,11 +14,8 @@
 
 import { log } from './utils.js';
 
-const CLIENT_ID = encodeURIComponent('7f57ca41ae308a1e499c'); // UPDATE GIT CLIENT ID
-const GIT_CLIENT_SECRET = '576d72f19970fc1c2f495f27181663342d6b5781';
 const REDIRECT_URI = chrome.identity.getRedirectURL();
 const TEMPLATE_FOLDER_ID = '1x1IOTj3iTNqAonbzfvvKUv6lAzVHKZ_Z';
-const googleClientId = encodeURIComponent('709069296039-4j9ps75je88kfgvqgpp3sa3pb3c5fic2.apps.googleusercontent.com'); // Update Google Client Id
 const DOCUMENT_TYPE_MAP = {
   'application/vnd.google-apps.spreadsheet': 'xlsx',
   'application/vnd.google-apps.document': 'docx',
@@ -26,8 +23,8 @@ const DOCUMENT_TYPE_MAP = {
 };
 
 async function getGoogleAccessToken() {
-  const googleScope = encodeURIComponent('https://www.googleapis.com/auth/drive');
-  const googleAuthURL = `https://accounts.google.com/o/oauth2/v2/auth?scope=${googleScope}&include_granted_scopes=true&response_type=token&state=state_parameter_passthrough_value&redirect_uri=${REDIRECT_URI}&client_id=${googleClientId}`;
+  const { oauth2 } = chrome.runtime.getManifest();
+  const googleAuthURL = `https://accounts.google.com/o/oauth2/v2/auth?scope=${oauth2.scopes}&include_granted_scopes=true&response_type=token&state=state_parameter_passthrough_value&redirect_uri=${REDIRECT_URI}&client_id=${oauth2.client_id}`;
   const redirectUrl = await chrome.identity.launchWebAuthFlow({
     url: googleAuthURL,
     interactive: true,
@@ -65,8 +62,9 @@ function handleErrors(data) {
 }
 
 async function getGitHubAuthToken() {
+  const { oauth2 } = chrome.runtime.getManifest();
   let gitAuthToken = '';
-  const gitAuthEndPoint = `https://github.com/login/oauth/authorize?client_id=${CLIENT_ID}&redirect_uri=${REDIRECT_URI}&scope=repo,gist,admin`;
+  const gitAuthEndPoint = `https://github.com/login/oauth/authorize?client_id=${oauth2.git_client_id}&redirect_uri=${REDIRECT_URI}&scope=repo,gist,admin`;
   const redirectUrl = await chrome.identity.launchWebAuthFlow({
     url: gitAuthEndPoint,
     interactive: true,
@@ -84,11 +82,12 @@ async function getGitHubAuthToken() {
 }
 
 async function getGithubAccessToken() {
+  const { oauth2 } = chrome.runtime.getManifest();
   const gitAuthToken = await getGitHubAuthToken();
   const url = 'https://github.com/login/oauth/access_token';
   const body = JSON.stringify({
-    client_id: CLIENT_ID,
-    client_secret: GIT_CLIENT_SECRET,
+    client_id: oauth2.git_client_id,
+    client_secret: oauth2.git_client_secret,
     code: gitAuthToken,
   });
   const response = await fetch(url, {
