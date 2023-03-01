@@ -102,7 +102,7 @@ async function getGithubAccessToken() {
 }
 
 async function createUserRepo(repoName, accessToken) {
-  const createRepoUrl = 'https://api.github.com/repos/hellofranklin/helix-project-boilerplate/generate';
+  const createRepoUrl = 'https://api.github.com/repos/hellofranklin/helixboilerplate/generate';
   const authtring = `Bearer ${accessToken}`;
   const response = await fetch(createRepoUrl, {
     method: 'POST',
@@ -350,6 +350,7 @@ export async function oneclicksample(siteName, templateName) {
     sendStatusMessage('Project setup completed !', 100);
     publish(gitcloneUrl);
   } catch (e) {
+    log.error(`Failed to create Franklin Project ${JSON.stringify(e)}`);
     sendStatusMessage('Failed to create Franklin Project ', 0, e);
   }
 }
