@@ -52,31 +52,51 @@ function sendStatusMessage(statusMessage, percentCompletion, error) {
   });
 }
 
-function handleErrors(data) {
-  let errorMessage = data.error ? data.error.message : data;
-  if (errorMessage.includes('User message')) {
-    errorMessage = errorMessage.substring(errorMessage.indexOf('User message') + 14);
+async function handleGoogleErrors(response) {
+  const data = await response.json();
+  if (!response.ok) {
+    let errorMessage = (data.error && data.error.message) ? data.error.message : data;
+    if (errorMessage.includes('User message')) {
+      errorMessage = errorMessage.substring(errorMessage.indexOf('User message') + 14);
+    }
+    if (errorMessage !== undefined) {
+      throw Error(errorMessage);
+    }
   }
-  log.error(`Handling Error : ${JSON.stringify(errorMessage)}`);
-  return errorMessage;
+  return data;
+}
+
+async function handleGitErrors(response) {
+  const data = await response.json();
+  if (!response.ok) {
+    const errormsg = data.errors ? data.errors.join() : JSON.stringify(data);
+    if (errormsg !== undefined) {
+      throw Error(errormsg);
+    }
+  }
+  return data;
 }
 
 async function getGitHubAuthToken() {
   const { oauth2 } = chrome.runtime.getManifest();
   let gitAuthToken = '';
   const gitAuthEndPoint = `https://github.com/login/oauth/authorize?client_id=${oauth2.git_client_id}&redirect_uri=${REDIRECT_URI}&scope=repo,gist,admin`;
-  const redirectUrl = await chrome.identity.launchWebAuthFlow({
-    url: gitAuthEndPoint,
-    interactive: true,
-  });
-  if (redirectUrl.includes('error=access_denied')) {
-    const errormsg = ' Access denied !';
-    throw Error(`Failed to Authorize Git : ${errormsg}`);
-  } else {
-    gitAuthToken = redirectUrl.substring(redirectUrl.indexOf('code=') + 5);
-    setTimeout(() => {
-      gitAuthToken = '';
-    }, 3600000);
+  try {
+    const redirectUrl = await chrome.identity.launchWebAuthFlow({
+      url: gitAuthEndPoint,
+      interactive: true,
+    });
+    if (redirectUrl.includes('error=access_denied')) {
+      const errormsg = ' Access denied !';
+      throw Error(`Failed to Authorize Git : ${errormsg}`);
+    } else {
+      gitAuthToken = redirectUrl.substring(redirectUrl.indexOf('code=') + 5);
+      setTimeout(() => {
+        gitAuthToken = '';
+      }, 3600000);
+    }
+  } catch (e) {
+    throw Error(`Failed to authorize Git Account : ${JSON.stringify(e)}`);
   }
   return gitAuthToken;
 }
@@ -90,40 +110,62 @@ async function getGithubAccessToken() {
     client_secret: oauth2.git_client_secret,
     code: gitAuthToken,
   });
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: { Authorization: gitAuthToken, 'Content-Type': 'application/json' },
-    body,
-  });
-  const data = await response.text();
-  const startIndex = data.indexOf('access_token=') + 13;
-  const endIndex = data.indexOf('&');
-  return data.substring(startIndex, endIndex);
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: gitAuthToken,
+        'Content-Type': 'application/json',
+      },
+      body,
+    });
+    const data = await response.text();
+    const startIndex = data.indexOf('access_token=') + 13;
+    const endIndex = data.indexOf('&');
+    return data.substring(startIndex, endIndex);
+  } catch (e) {
+    throw Error(`Failed to authorize Git Account : ${JSON.stringify(e)}`);
+  }
 }
 
 async function createUserRepo(repoName, accessToken) {
   const createRepoUrl = 'https://api.github.com/repos/hellofranklin/helixboilerplate/generate';
   const authtring = `Bearer ${accessToken}`;
-  const response = await fetch(createRepoUrl, {
-    method: 'POST',
-    headers: { Authorization: authtring, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: repoName }),
-  });
-  return response.json();
+  let data;
+  try {
+    const response = await fetch(createRepoUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: authtring,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ name: repoName }),
+    });
+    data = await handleGitErrors(response);
+  } catch (e) {
+    log.error(`Failed to Create Git Repo : ${e}`);
+    throw Error(`Failed to Create Git Repo : ${e.message}`);
+  }
+  return data;
 }
 
 async function createGDriveFolder(folderName, googleAccessToken) {
-  const response = await fetch('https://www.googleapis.com/drive/v3/files', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ name: folderName, mimeType: 'application/vnd.google-apps.folder' }),
-  });
-  const data = await response.json();
-  if (response.status !== 200) {
-    let errormsg;
-    if (handleErrors(data) !== undefined) {
-      throw Error(`\nFailed to create Google drive Folder : ${errormsg}`);
-    }
+  let data;
+  try {
+    const response = await fetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${googleAccessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: folderName,
+        mimeType: 'application/vnd.google-apps.folder',
+      }),
+    });
+    data = await handleGoogleErrors(response);
+  } catch (e) {
+    throw Error(`Failed to Create Google Drive Folder : ${e.message}`);
   }
   log.info('The Folder has been Created successfully.');
   return data.id;
@@ -131,18 +173,15 @@ async function createGDriveFolder(folderName, googleAccessToken) {
 
 async function createPermission(fileId, googleAccessToken) {
   const bodyjson = { role: 'writer', type: 'user', emailAddress: 'helix@adobe.com' };
-
-  const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify(bodyjson),
-  });
-  const data = await response.json();
-  if (response.status !== 200) {
-    const errormsg = handleErrors(data);
-    if (errormsg !== undefined) {
-      throw Error(`\nFailed to give permission to Google drive Folder : ${errormsg}`);
-    }
+  try {
+    const response = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${googleAccessToken}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify(bodyjson),
+    });
+    await handleGoogleErrors(response);
+  } catch (e) {
+    throw Error(`Failed to Permission to Google Drive : ${e.message}`);
   }
   log.info('The Folder has been given the permission successfully.');
 }
@@ -152,37 +191,38 @@ async function editFsTab(giturl, gitAccessToken, folderId) {
   const driveUrl = `https://drive.google.com/drive/folders/${folderId}`;
   const editfsTaburl = `${giturl}/contents/fstab.yaml`;
   const authtring = `Bearer ${gitAccessToken}`;
-  const response1 = await fetch(editfsTaburl, {
-    method: 'GET',
-    headers: { Authorization: authtring, 'Content-Type': 'application/json' },
-  });
+  let data;
+  try {
+    const response1 = await fetch(editfsTaburl, {
+      method: 'GET',
+      headers: { Authorization: authtring, 'Content-Type': 'application/json' },
+    });
 
-  const data1 = await response1.json();
-  if (response1.status !== 200) {
-    const errormsg = handleErrors(data1);
-    if (errormsg !== undefined) {
-      throw Error(`\nFailed to update FsTab : ${errormsg}`);
-    }
-  }
-  const blobsha = data1.sha;
-  const contentString = `mountpoints:
+    const data1 = await handleGitErrors(response1);
+    const blobsha = data1.sha;
+    const contentString = `mountpoints:
   /: ${driveUrl}`;
-  log.info(`going to update FsTab.yaml : ${contentString}`);
-  const bodyjson = { message: 'updated FsTab.Yaml', content: btoa(contentString), sha: blobsha };
-  const response = await fetch(editfsTaburl, {
-    method: 'PUT',
-    headers: { Authorization: authtring, 'Content-Type': 'application/json' },
-    body: JSON.stringify(bodyjson),
-  });
-  const data = await response.json();
-  if (response.status !== 200) {
-    const errormsg = handleErrors(data);
-    if (errormsg !== undefined) {
-      throw Error(`\nFailed to update FsTab : ${errormsg}`);
+    log.info(`going to update FsTab.yaml : ${contentString}`);
+    const bodyjson = {
+      message: 'updated FsTab.Yaml',
+      content: btoa(contentString),
+      sha: blobsha,
+    };
+    const response = await fetch(editfsTaburl, {
+      method: 'PUT',
+      headers: {
+        Authorization: authtring,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(bodyjson),
+    });
+    data = await handleGitErrors(response);
+
+    if (data.commit.message.includes('updated')) {
+      log.info(`The FSTab.yaml updated : ${JSON.stringify(data)}`);
     }
-  }
-  if (data.commit.message.includes('updated')) {
-    log.info(`The FSTab.yaml updated : ${JSON.stringify(data)}`);
+  } catch (e) {
+    throw new Error(`Failed to Update FS Tab : ${e.message}||${JSON.stringify(e)}`);
   }
   return data;
 }
@@ -220,34 +260,31 @@ async function uploadFile(folderId, fileName, fileblob, docType, googleAccessTok
     uploadContentType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
     mimeType = 'application/vnd.google-apps.document';
   }
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${googleAccessToken}`,
-      'Content-Type': 'application/json',
-      'X-Upload-Content-Type': uploadContentType,
-    },
-    body: JSON.stringify({ name: fileName, mimeType, parents: [folderId] }),
-  });
-  const metaResponse = await response;
-  if (metaResponse.status !== 200) {
-    const errormsg = handleErrors(metaResponse);
-    if (errormsg !== undefined) {
-      throw Error(`\nFailed to create Tempate : ${errormsg}`);
-    }
-  }
-  const location = metaResponse.headers.get('location');
-  const response2 = await fetch(location, {
-    method: 'PUT',
-    headers: { Authorization: `Bearer ${googleAccessToken}` },
-    body: await fileblob,
-  });
-  const dataResponse = await response2.json();
-  if (dataResponse.status !== 200) {
-    const errormsg = handleErrors(dataResponse);
-    if (errormsg !== undefined) {
-      throw Error(`\nFailed to create Tempate : ${errormsg}`);
-    }
+  try {
+    const metaResponse = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${googleAccessToken}`,
+        'Content-Type': 'application/json',
+        'X-Upload-Content-Type': uploadContentType,
+      },
+      body: JSON.stringify({
+        name: fileName,
+        mimeType,
+        parents: [folderId],
+      }),
+    });
+    await handleGoogleErrors(metaResponse);
+    const location = metaResponse.headers.get('location');
+    const response = await fetch(location, {
+      method: 'PUT',
+      headers: { Authorization: `Bearer ${googleAccessToken}` },
+      body: await fileblob,
+    });
+    await handleGoogleErrors(response);
+  } catch (e) {
+    log.error(`Failed to create Tempate  : ${e}`);
+    throw Error(`Failed to create Tempate  : ${e.message}`);
   }
 }
 
@@ -350,7 +387,7 @@ export async function oneclicksample(siteName, templateName) {
     sendStatusMessage('Project setup completed !', 100);
     publish(gitcloneUrl);
   } catch (e) {
-    log.error(`Failed to create Franklin Project ${JSON.stringify(e)}`);
+    log.error(`Failed to create Franklin Project ${e}`);
     sendStatusMessage('Failed to create Franklin Project ', 0, e);
   }
 }
