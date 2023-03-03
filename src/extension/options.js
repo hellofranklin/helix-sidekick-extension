@@ -268,16 +268,14 @@ window.addEventListener('DOMContentLoaded', () => {
         }
       });
     } else {
-      // eslint-disable-next-line no-alert
       window.alert(i18n('config_invalid_shareurl'));
     }
   });
-  // removed evnt from here : neeraj
   document.getElementById('siteName').addEventListener('input', () => {
     if (document.getElementById('siteName').value.trim().length > 0) {
       clearErrorMessage();
       if (!document.getElementById('siteName').value.match(/^[0-9a-zA-Z ]+$/)) {
-        setValidationErrorMessage('Invalid Site Name');
+        setValidationErrorMessage('Invalid Site Name (Only alphanumeric characters and spaces allowed)');
       } else {
         document.getElementById('createFranklinSite').disabled = false;
       }

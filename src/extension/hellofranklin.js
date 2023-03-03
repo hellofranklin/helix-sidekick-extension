@@ -53,7 +53,17 @@ function sendStatusMessage(statusMessage, percentCompletion, error) {
 }
 
 async function handleGoogleErrors(response) {
-  const data = await response.json();
+  const responseBody = await response.text();
+  let data;
+  try {
+    if (responseBody) {
+      data = JSON.parse(responseBody);
+    } else {
+      log.info('Response body undefined or empty ');
+    }
+  } catch (e) {
+    throw Error(`Response Body not json : ${data}`);
+  }
   if (!response.ok) {
     let errorMessage = (data.error && data.error.message) ? data.error.message : data;
     if (errorMessage.includes('User message')) {
@@ -67,7 +77,17 @@ async function handleGoogleErrors(response) {
 }
 
 async function handleGitErrors(response) {
-  const data = await response.json();
+  const responseBody = await response.text();
+  let data;
+  try {
+    if (responseBody) {
+      data = JSON.parse(responseBody);
+    } else {
+      log.info('Response body undefined or empty ');
+    }
+  } catch (e) {
+    throw Error(`Response Body not json : ${data}`);
+  }
   if (!response.ok) {
     const errormsg = data.errors ? data.errors.join() : JSON.stringify(data);
     if (errormsg !== undefined) {
@@ -96,7 +116,7 @@ async function getGitHubAuthToken() {
       }, 3600000);
     }
   } catch (e) {
-    throw Error(`Failed to authorize Git Account : ${JSON.stringify(e)}`);
+    throw Error(`Failed to authorize Git Account : ${e}`);
   }
   return gitAuthToken;
 }
@@ -124,7 +144,7 @@ async function getGithubAccessToken() {
     const endIndex = data.indexOf('&');
     return data.substring(startIndex, endIndex);
   } catch (e) {
-    throw Error(`Failed to authorize Git Account : ${JSON.stringify(e)}`);
+    throw Error(`Failed to authorize Git Account : ${e}`);
   }
 }
 
@@ -168,6 +188,7 @@ async function createGDriveFolder(folderName, googleAccessToken) {
     throw Error(`Failed to Create Google Drive Folder : ${e.message}`);
   }
   log.info('The Folder has been Created successfully.');
+  log.info(`google Drive url : https://drive.google.com/drive/folders/${data.id}`);
   return data.id;
 }
 
@@ -222,7 +243,7 @@ async function editFsTab(giturl, gitAccessToken, folderId) {
       log.info(`The FSTab.yaml updated : ${JSON.stringify(data)}`);
     }
   } catch (e) {
-    throw new Error(`Failed to Update FS Tab : ${e.message}||${JSON.stringify(e)}`);
+    throw new Error(`Failed to Update FS Tab : ${e.message}||${e}`);
   }
   return data;
 }
