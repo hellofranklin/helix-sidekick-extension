@@ -258,7 +258,8 @@ function publish(gitcloneUrl) {
 }
 
 async function getFile(documentId, docType) {
-  const url = `https://docs.google.com/document/d/${documentId}/export?format=${docType}`;
+  const documentPath = (docType === 'docx') ? 'document' : 'spreadsheets';
+  const url = `https://docs.google.com/${documentPath}/d/${documentId}/export?format=${docType}`;
   try {
     const response = await fetch(url);
     if (!response.ok) {
