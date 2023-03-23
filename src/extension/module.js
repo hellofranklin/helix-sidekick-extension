@@ -11,8 +11,6 @@
  */
 /* eslint-disable no-console, no-alert */
 
-'use strict';
-
 (() => {
   /**
    * @typedef {Object} ElemConfig
@@ -253,12 +251,90 @@
   };
 
   /**
+   * Array of restricted paths with limited sidekick functionality.
+   * @private
+   * @type {string[]}
+   */
+  const RESTRICTED_PATHS = [
+    '/helix-env.json',
+  ];
+
+  /**
    * The URL of the development environment.
-   * @see {@link https://github.com/adobe/helix-cli|Franklin CLI}).
+   * @see {@link https://github.com/adobe/helix-cli|AEM CLI}).
    * @private
    * @type {URL}
    */
   const DEV_URL = new URL('http://localhost:3000');
+
+  /**
+   * Log RUM for sidekick telemetry.
+   * @private
+   * @param {string} checkpoint identifies the checkpoint in funnel
+   * @param {Object} data additional data for RUM sample
+   */
+  function sampleRUM(checkpoint, data = {}) {
+    sampleRUM.defer = sampleRUM.defer || [];
+    const defer = (fnname) => {
+      sampleRUM[fnname] = sampleRUM[fnname]
+        || ((...args) => sampleRUM.defer.push({ fnname, args }));
+    };
+    sampleRUM.drain = sampleRUM.drain
+      || ((dfnname, fn) => {
+        sampleRUM[dfnname] = fn;
+        sampleRUM.defer
+          .filter(({ fnname }) => dfnname === fnname)
+          .forEach(({ fnname, args }) => sampleRUM[fnname](...args));
+      });
+    sampleRUM.on = (chkpnt, fn) => {
+      sampleRUM.cases[chkpnt] = fn;
+    };
+    defer('observe');
+    defer('cw');
+    try {
+      window.hlx = window.hlx || {};
+      const sk = window.hlx.sidekick;
+      if (!window.hlx.rum) {
+        const usp = new URLSearchParams(sk.location.search);
+        const weight = (usp.get('hlx-sk-rum') === 'on') ? 1 : 10; // with parameter, weight is 1. Defaults to 10.
+        // eslint-disable-next-line no-bitwise
+        const hashCode = (s) => s.split('').reduce((a, b) => (((a << 5) - a) + b.charCodeAt(0)) | 0, 0);
+        const id = `${hashCode(sk.location.href)}-${new Date().getTime()}-${Math.random().toString(16).substr(2, 14)}`;
+        const random = Math.random();
+        const isSelected = (random * weight < 1);
+        // eslint-disable-next-line object-curly-newline
+        window.hlx.rum = { weight, id, random, isSelected, sampleRUM };
+      }
+      const { weight, id } = window.hlx.rum;
+      if (window.hlx && window.hlx.rum && window.hlx.rum.isSelected) {
+        const sendPing = (pdata = data) => {
+          // eslint-disable-next-line object-curly-newline, max-len, no-use-before-define
+          const body = JSON.stringify({ weight, id, referer: sk.location.href, generation: window.hlx.RUM_GENERATION, checkpoint, ...data });
+          const url = `https://rum.hlx.page/.rum/${weight}`;
+          // eslint-disable-next-line no-unused-expressions
+          navigator.sendBeacon(url, body);
+          // eslint-disable-next-line no-console
+          console.debug(`ping:${checkpoint}`, pdata);
+        };
+        sampleRUM.cases = sampleRUM.cases || {
+          cwv: () => sampleRUM.cwv(data) || true,
+          lazy: () => {
+            // use classic script to avoid CORS issues
+            const script = document.createElement('script');
+            script.src = 'https://rum.hlx.page/.rum/@adobe/helix-rum-enhancer@^1/src/index.js';
+            document.head.appendChild(script);
+            return true;
+          },
+        };
+        sendPing(data);
+        if (sampleRUM.cases[checkpoint]) {
+          sampleRUM.cases[checkpoint]();
+        }
+      }
+    } catch (error) {
+      // something went wrong
+    }
+  }
 
   /**
    * Retrieves project details from a host name.
@@ -348,6 +424,7 @@
       pushDownSelector,
       specialViews,
       scriptUrl = 'https://www.hlx.live/tools/sidekick/module.js',
+      scriptRoot = scriptUrl.split('/').filter((_, i, arr) => i < arr.length - 1).join('/'),
     } = config;
     const innerPrefix = owner && repo ? `${ref}--${repo}--${owner}` : null;
     const publicHost = host && host.startsWith('http') ? new URL(host).host : host;
@@ -377,8 +454,6 @@
         `html, iframe#WebApplicationFrame${pushDownSelector ? `, ${pushDownSelector}` : ''}`,
       ).forEach((elem) => pushDownElements.push(elem));
     }
-    // script root url
-    const scriptRoot = scriptUrl.split('/').filter((_, i, arr) => i < arr.length - 1).join('/');
     // default views
     const defaultSpecialViews = [
       {
@@ -392,7 +467,9 @@
       : defaultSpecialViews;
     // find view based on path
     const { pathname } = location;
-    const specialView = allSpecialViews.find(({ path }) => globToRegExp(path).test(pathname));
+    const specialView = allSpecialViews.find(({
+      path,
+    }) => !RESTRICTED_PATHS.includes(pathname) && globToRegExp(path).test(pathname));
 
     return {
       ...config,
@@ -442,19 +519,6 @@
   }
 
   /**
-   * Extracts an internationalized text from the CSS of a given element
-   * @private
-   * @param {HTMLElement} elem The HTML element
-   * @returns {string} The text
-   */
-  function getI18nText(elem) {
-    const text = window.getComputedStyle(elem, ':before').getPropertyValue('content');
-    return text !== 'normal' && text !== 'none'
-      ? text.substring(1, text.length - 1)
-      : '';
-  }
-
-  /**
    * Makes the given element accessible by setting a title attribute
    * based on its :before CSS style or text content, and enabling
    * keyboard access.
@@ -464,19 +528,9 @@
    */
   function makeAccessible(elem) {
     if (elem.tagName === 'A' || elem.tagName === 'BUTTON') {
-      const ensureTitle = (tag) => {
-        if (!tag.title) {
-          // wait for computed style to be available
-          window.setTimeout(() => {
-            let title = getI18nText(tag);
-            if (!title) {
-              title = tag.textContent;
-            }
-            tag.setAttribute('title', title);
-          }, 200);
-        }
-      };
-      ensureTitle(elem);
+      if (!elem.title) {
+        elem.title = elem.textContent;
+      }
       elem.setAttribute('tabindex', '0');
     }
     return elem;
@@ -536,6 +590,17 @@
     return makeAccessible(before
       ? parent.insertBefore(tag, before)
       : parent.appendChild(tag));
+  }
+
+  /**
+   * Retrieves a string from the dictionary in the user's language.
+   * @private
+   * @param {Sidekick} sk The sidekick
+   * @param {string} key The dictionary key
+   * @returns {string} The string in the user's language
+   */
+  function i18n(sk, key) {
+    return sk.dict ? (sk.dict[key] || '') : '';
   }
 
   /**
@@ -625,7 +690,7 @@
         // define alignment
         const alignments = [
           'bottom-center',
-          'botttom-left',
+          'bottom-left',
           'bottom-right',
         ];
         let align = target === sk.root ? alignments[0] : alignments[1];
@@ -683,16 +748,18 @@
     const shareUrl = getShareUrl(config);
     if (navigator.share) {
       navigator.share({
-        title: `Sidekick for ${config.project}`,
-        text: `Check out this helper bookmarklet for ${config.project}`,
+        text: i18n(sk, 'config_shareurl_share_title').replace('$1', config.project),
         url: shareUrl,
       });
     } else {
       navigator.clipboard.writeText(shareUrl);
-      sk.showModal({
-        css: 'modal-share-success',
-      });
+      sk.showModal(i18n(sk, 'config_shareurl_copied').replace('$1', config.project));
     }
+    // log telemetry
+    sampleRUM('sidekick:share', {
+      source: sk.location.href,
+      target: shareUrl,
+    });
   }
 
   /**
@@ -713,6 +780,30 @@
           },
         },
       }));
+      const userEvents = [
+        'shown',
+        'hidden',
+        'updated',
+        'published',
+        'unpublished',
+        'deleted',
+        'envswitched',
+        'page-info',
+        'user',
+        'loggedin',
+        'loggedout',
+        'helpnext',
+        'helpdismissed',
+        'helpacknowlegded',
+        'helpoptedout',
+      ];
+      if (name.startsWith('custom:') || userEvents.includes(name)) {
+        // log telemetry
+        sampleRUM(`sidekick:${name}`, {
+          source: data?.sourceUrl || sk.location.href,
+          target: data?.targetUrl || sk.status.webPath,
+        });
+      }
     } catch (e) {
       console.warn('failed to fire event', name, e);
     }
@@ -816,6 +907,7 @@
       id: 'edit',
       condition: (sidekick) => !sidekick.isEditor() && sidekick.isProject(),
       button: {
+        text: i18n(sk, 'edit'),
         action: async () => {
           const { config, status } = sk;
           const editUrl = status.edit && status.edit.url;
@@ -837,17 +929,17 @@
    */
   function addEnvPlugins(sk) {
     // add env container
+    let switchViewText = i18n(sk, 'switch_view');
+    if (sk.isDev()) switchViewText = i18n(sk, 'development');
+    if (sk.isInner()) switchViewText = i18n(sk, 'preview');
+    if (sk.isOuter()) switchViewText = i18n(sk, 'live');
+    if (sk.isProd()) switchViewText = i18n(sk, 'production');
     sk.add({
       id: 'env',
       feature: true,
       button: {
+        text: switchViewText,
         isDropdown: true,
-      },
-      callback: (sidekick, $env) => {
-        if (sidekick.isDev()) $env.classList.add('is-dev');
-        if (sidekick.isInner()) $env.classList.add('is-preview');
-        if (sidekick.isOuter()) $env.classList.add('is-live');
-        if (sidekick.isProd()) $env.classList.add('is-prod');
       },
     });
 
@@ -857,6 +949,7 @@
       container: 'env',
       condition: (sidekick) => sidekick.isEditor() || sidekick.isProject(),
       button: {
+        text: i18n(sk, 'development'),
         action: async (evt) => {
           if (evt.target.classList.contains('pressed')) {
             return;
@@ -876,6 +969,7 @@
       container: 'env',
       condition: (sidekick) => sidekick.isEditor() || sidekick.isProject(),
       button: {
+        text: i18n(sk, 'preview'),
         action: async (evt) => {
           if (evt.target.classList.contains('pressed')) {
             return;
@@ -895,6 +989,7 @@
       condition: (sidekick) => sidekick.config.outerHost
         && (sidekick.isEditor() || sidekick.isProject()),
       button: {
+        text: i18n(sk, 'live'),
         action: async (evt) => {
           if (evt.target.classList.contains('pressed')) {
             return;
@@ -916,6 +1011,7 @@
         && sidekick.config.host !== sidekick.config.outerHost
         && (sidekick.isEditor() || sidekick.isProject()),
       button: {
+        text: i18n(sk, 'production'),
         action: async (evt) => {
           if (evt.target.classList.contains('pressed')) {
             return;
@@ -944,6 +1040,7 @@
       id: 'edit-preview',
       condition: (sidekick) => sidekick.isEditor(),
       button: {
+        text: i18n(sk, 'preview'),
         action: async (evt) => {
           const { status } = sk;
           const updatePreview = async (ranBefore) => {
@@ -958,15 +1055,14 @@
               } else if (status.webPath.startsWith('/.helix/') && resp.error) {
                 // show detail message only in config update mode
                 sk.showModal({
-                  css: 'modal-config-failure',
-                  message: resp.error,
+                  message: `${i18n(sk, 'error_config_failure')}${resp.error}`,
                   sticky: true,
                   level: 0,
                 });
               } else {
                 console.error(resp);
                 sk.showModal({
-                  css: 'modal-preview-failure',
+                  message: i18n(sk, 'error_preview_failure'),
                   sticky: true,
                   level: 0,
                 });
@@ -976,7 +1072,7 @@
             // handle special case /.helix/*
             if (status.webPath.startsWith('/.helix/')) {
               sk.showModal({
-                css: 'modal-config-success',
+                message: i18n(sk, 'preview_config_success'),
               });
               return;
             }
@@ -985,10 +1081,8 @@
           if (status.edit && status.edit.sourceLocation
             && status.edit.sourceLocation.startsWith('onedrive:')) {
             // show ctrl/cmd + s hint on onedrive docs
-            const mac = navigator.platform.toLowerCase().includes('mac') ? '-mac' : '';
-            sk.showModal({
-              css: `modal-preview-onedrive${mac}`,
-            });
+            const mac = navigator.platform.toLowerCase().includes('mac') ? '_mac' : '';
+            sk.showModal(i18n(sk, `preview_onedrive${mac}`));
           } else if (status.edit.sourceLocation?.startsWith('gdrive:')) {
             const { contentType } = status.edit;
 
@@ -999,14 +1093,14 @@
             if (neitherGdocOrGSheet) {
               const isMsDocMime = contentType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
               const isMsExcelSheet = contentType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-              let css = 'modal-preview-not-gdoc-generic'; // show generic message by default
+              let errorKey = 'error_preview_not_gdoc_generic'; // show generic message by default
               if (isMsDocMime) {
-                css = 'modal-preview-not-gdoc-ms-word';
+                errorKey = 'error_preview_not_gdoc_ms_word';
               } else if (isMsExcelSheet) {
-                css = 'modal-preview-not-gsheet-ms-excel';
+                errorKey = 'error_preview_not_gsheet_ms_excel';
               }
               sk.showModal({
-                css,
+                message: i18n(sk, errorKey),
                 sticky: true,
                 level: 0,
               });
@@ -1034,18 +1128,9 @@
       id: 'reload',
       condition: (s) => s.config.innerHost && (s.isInner() || s.isDev()),
       button: {
+        text: i18n(sk, 'reload'),
         action: async (evt) => {
-          const { status } = sk;
-          if (status.edit && status.edit.sourceLocation
-            && status.edit.sourceLocation.startsWith('onedrive:')) {
-            // show ctrl/cmd + s hint on onedrive docs
-            const mac = navigator.platform.toLowerCase().includes('mac') ? '-mac' : '';
-            sk.showModal({
-              css: `modal-reload-onedrive${mac}`,
-            });
-          } else {
-            sk.showWait();
-          }
+          sk.showWait();
           try {
             const resp = await sk.update();
             if (!resp.ok && resp.status >= 400) {
@@ -1061,7 +1146,7 @@
             }
           } catch (e) {
             sk.showModal({
-              css: 'modal-reload-failure',
+              message: i18n(sk, 'reload_failure'),
               sticky: true,
               level: 0,
             });
@@ -1083,8 +1168,10 @@
       id: 'delete',
       condition: (sidekick) => sidekick.isAuthorized('preview', 'delete') && sidekick.isProject()
         && (!sidekick.status.edit || !sidekick.status.edit.url) // show only if no edit url and
-        && (sidekick.status.preview && sidekick.status.preview.status !== 404), // preview exists
+        && (sidekick.status.preview && sidekick.status.preview.status !== 404) // preview exists
+        && !RESTRICTED_PATHS.includes(sidekick.location.pathname),
       button: {
+        text: i18n(sk, 'delete'),
         action: async () => {
           const { location, status } = sk;
           // double check
@@ -1108,7 +1195,7 @@
               window.location.href = `${location.origin}/`;
             } catch (e) {
               sk.showModal({
-                css: 'modal-delete-failure',
+                message: i18n(sk, 'delete_failure'),
                 sticky: true,
                 level: 0,
               });
@@ -1129,6 +1216,7 @@
       id: 'publish',
       condition: (sidekick) => sidekick.isProject() && sk.isContent(),
       button: {
+        text: i18n(sk, 'publish'),
         action: async (evt) => {
           const { config, location } = sk;
           const path = location.pathname;
@@ -1154,7 +1242,7 @@
           } else {
             console.error(results);
             sk.showModal({
-              css: 'modal-publish-failure',
+              message: i18n(sk, 'publish_failure'),
               sticky: true,
               level: 0,
             });
@@ -1177,8 +1265,9 @@
       condition: (sidekick) => sidekick.isAuthorized('live', 'delete') && sidekick.isProject()
         && (!sidekick.status.edit || !sidekick.status.edit.url) // show only if no edit url and
         && sidekick.status.live && sidekick.status.live.lastModified // published
-        && sk.isContent(),
+        && sk.isContent() && !RESTRICTED_PATHS.includes(sidekick.location.pathname),
       button: {
+        text: i18n(sk, 'unpublish'),
         action: async () => {
           const { status } = sk;
           // double check
@@ -1202,7 +1291,7 @@
               }
             } catch (e) {
               sk.showModal({
-                css: 'modal-unpublish-failure',
+                message: i18n(sk, 'unpublish_failure'),
                 sticky: true,
                 level: 0,
               });
@@ -1222,7 +1311,7 @@
     if (sk.isAdmin()) {
       let bulkSelection = [];
 
-      const isSharePoint = (location) => location.host.match(/\w+\.sharepoint.com/)
+      const isSharePoint = (location) => /\w+\.sharepoint.com$/.test(location.host)
         && location.pathname.endsWith('/Forms/AllItems.aspx');
 
       const toWebPath = (folder, item) => {
@@ -1267,35 +1356,36 @@
       const updateBulkInfo = () => {
         const sel = getBulkSelection(sk);
         bulkSelection = sel;
+        // update info
         const label = sk.root.querySelector('#hlx-sk-bulk-info');
-        label.textContent = '';
-        label.className = sel.length > 0 ? `selected-item${sel.length !== 1 ? 's' : ''}` : '';
-        if (sel.length > 1) {
-          label.textContent = getI18nText(label).replace('$1', sel.length);
+        if (sel.length === 0) {
+          label.textContent = i18n(sk, 'bulk_selection_empty');
+        } else if (sel.length === 1) {
+          label.textContent = i18n(sk, 'bulk_selection_single');
+        } else {
+          label.textContent = i18n(sk, 'bulk_selection_multiple').replace('$1', sel.length);
         }
-        // update buttons
+        // show/hide bulk buttons
         ['preview', 'publish', 'copy-urls'].forEach((action) => {
           sk.get(`bulk-${action}`).classList[sel.length === 0 ? 'add' : 'remove']('hlx-sk-hidden');
         });
-        sk.get('bulk-copy-urls').classList[sel.length === 1 ? 'add' : 'remove']('single');
+        // update copy url button texts based on selection size
+        ['', 'preview', 'live', 'prod'].forEach((env) => {
+          const text = i18n(sk, `copy_${env}${env ? '_' : ''}url${sel.length === 1 ? '' : 's'}`);
+          const button = sk.get(`bulk-copy-${env}${env ? '-' : ''}urls`).querySelector('button');
+          button.textContent = text;
+          button.title = text;
+        });
       };
 
       const getBulkText = ([num, total], type, action, mod) => {
-        let cls = `hlx-sk-bulk-${type}`;
-        if (num > 0) {
-          cls = `${cls}-${action}-item${(total || num) === 1 ? '' : 's'}${mod ? `-${mod}` : ''}`;
+        let i18nKey = `bulk_${type}`;
+        if (num === 0) {
+          i18nKey = `${i18nKey}_empty`;
+        } else {
+          i18nKey = `${i18nKey}_${action}_${(total || num) === 1 ? 'single' : 'multiple'}${mod ? `_${mod}` : ''}`;
         }
-        let placeholder = sk.get('bulk-info').querySelector(`.hlx-sk-placeholder.${cls}`);
-        if (!placeholder) {
-          placeholder = createTag({
-            tag: 'span',
-            attrs: {
-              class: `hlx-sk-placeholder ${cls}`,
-            },
-          });
-          sk.get('bulk-info').append(placeholder);
-        }
-        return getI18nText(placeholder)
+        return i18n(sk, i18nKey)
           .replace('$1', num)
           .replace('$2', total);
       };
@@ -1308,6 +1398,78 @@
         return window.location.href !== sk.location.href;
       };
 
+      const doBulkOperation = async (operation, method, concurrency, host) => {
+        const { config, status } = sk;
+        const sel = bulkSelection.map((item) => toWebPath(status.webPath, item));
+        const results = [];
+        const total = sel.length;
+        const { processQueue } = await import(`${config.scriptRoot}/lib/process-queue.js`);
+        await processQueue(sel, async (file) => {
+          results.push(await sk[method](file));
+          if (total > 1) {
+            sk.showModal(getBulkText([results.length, total], 'progress', operation), true);
+          }
+        }, concurrency);
+        const lines = [];
+        const ok = results.filter((res) => res.ok);
+        console.log(ok);
+        if (ok.length > 0) {
+          lines.push(getBulkText([ok.length], 'result', operation, 'success'));
+          lines.push(createTag({
+            tag: 'button',
+            text: i18n(sk, ok.length === 1 ? 'copy_url' : 'copy_urls'),
+            lstnrs: {
+              click: (evt) => {
+                evt.stopPropagation();
+                navigator.clipboard.writeText(ok.map((item) => `https://${host}${item.path}`)
+                  .join('\n'));
+                sk.hideModal();
+              },
+            },
+          }));
+        }
+        const failed = results.filter((res) => !res.ok);
+        if (failed.length > 0) {
+          const failureText = getBulkText([failed.length], 'result', operation, 'failure');
+          lines.push(failureText);
+          lines.push(...failed.map((item) => {
+            if (item.error.endsWith('docx with google not supported.')) {
+              item.error = getBulkText([1], 'result', operation, 'error_no_docx');
+            }
+            if (item.error.endsWith('xlsx with google not supported.')) {
+              item.error = getBulkText([1], 'result', operation, 'error_no_xlsx');
+            }
+            if (item.error.includes('source does not exist')) {
+              item.error = getBulkText([1], 'result', operation, 'error_no_source');
+            }
+            return `${item.path.split('/').pop()}: ${item.error}`;
+          }));
+        }
+        lines.push(createTag({
+          tag: 'button',
+          text: i18n(sk, 'close'),
+        }));
+        let level = 2;
+        if (failed.length > 0) {
+          level = 1;
+          if (ok.length === 0) {
+            level = 0;
+          }
+        }
+        sk.showModal(
+          lines,
+          true,
+          level,
+        );
+      };
+
+      const doBulkCopyUrls = async (hostProperty) => {
+        const { config, status } = sk;
+        const urls = bulkSelection.map((item) => `https://${config[hostProperty]}${toWebPath(status.webPath, item)}`);
+        navigator.clipboard.writeText(urls.join('\n'));
+        sk.showModal(i18n(sk, `copied_url${urls.length !== 1 ? 's' : ''}`));
+      };
+
       sk.addEventListener('statusfetched', () => {
         // bulk info
         sk.add({
@@ -1317,21 +1479,12 @@
             tag: 'span',
             attrs: {
               id: 'hlx-sk-bulk-info',
-              class: 'hlx-sk-label hlx-sk-placeholder',
+              class: 'hlx-sk-label',
             },
           }],
           callback: () => {
-            let fetchingStatus = false;
             window.setInterval(() => {
               updateBulkInfo();
-              if (isChangedUrl() && !fetchingStatus) {
-                // url changed, refetch status
-                sk.addEventListener('statusfetched', () => {
-                  fetchingStatus = false;
-                }, { once: true });
-                sk.fetchStatus(true);
-                fetchingStatus = true;
-              }
             }, 500);
           },
         });
@@ -1341,75 +1494,22 @@
           id: 'bulk-preview',
           condition: (sidekick) => sidekick.isAdmin(),
           button: {
+            text: i18n(sk, 'preview'),
             action: async () => {
               const confirmText = getBulkText([bulkSelection.length], 'confirm', 'preview');
               if (bulkSelection.length === 0) {
                 sk.showModal(confirmText);
               } else if (window.confirm(confirmText)) {
                 sk.showWait();
-                const { config, status } = sk;
-                const sel = bulkSelection.map((item) => toWebPath(status.webPath, item));
-                const results = [];
-                const total = sel.length;
-                const { processQueue } = await import(`${config.scriptRoot}/lib/process-queue.js`);
-                await processQueue(sel, async (file) => {
-                  results.push(await sk.update(file));
-                  if (total > 1) {
-                    sk.showModal(getBulkText([results.length, total], 'progress', 'preview'), true);
-                  }
-                }, 5);
-                const lines = [];
-                const ok = results.filter((res) => res.ok);
-                if (ok.length > 0) {
-                  lines.push(getBulkText([ok.length], 'result', 'preview', 'success'));
-                  lines.push(createTag({
-                    tag: 'button',
-                    attrs: {
-                      class: `hlx-sk-bulk-copy-url${ok.length > 1 ? 's' : ''}`,
-                    },
-                    lstnrs: {
-                      click: (evt) => {
-                        evt.stopPropagation();
-                        const host = config.innerHost;
-                        navigator.clipboard.writeText(ok.map((item) => `https://${host}${item.path}`)
-                          .join('\n'));
-                        sk.hideModal();
-                      },
-                    },
-                  }));
+                if (isChangedUrl()) {
+                  // url changed, refetch status
+                  sk.addEventListener('statusfetched', () => {
+                    doBulkOperation('preview', 'update', 2, sk.config.innerHost);
+                  }, { once: true });
+                  sk.fetchStatus(true);
+                } else {
+                  doBulkOperation('preview', 'update', 2, sk.config.innerHost);
                 }
-                const failed = results.filter((res) => !res.ok);
-                if (failed.length > 0) {
-                  const failureText = getBulkText([failed.length], 'result', 'preview', 'failure');
-                  lines.push(failureText);
-                  lines.push(...failed.map((item) => {
-                    if (item.error.endsWith('docx with google not supported.')) {
-                      item.error = getBulkText([1], 'result', 'preview', 'error-no-docx');
-                    }
-                    if (item.error.endsWith('xlsx with google not supported.')) {
-                      item.error = getBulkText([1], 'result', 'preview', 'error-no-xlsx');
-                    }
-                    return `${item.path.split('/').pop()}: ${item.error}`;
-                  }));
-                }
-                lines.push(createTag({
-                  tag: 'button',
-                  attrs: {
-                    class: 'hlx-sk-bulk-close',
-                  },
-                }));
-                let level = 2;
-                if (failed.length > 0) {
-                  level = 1;
-                  if (ok.length === 0) {
-                    level = 0;
-                  }
-                }
-                sk.showModal(
-                  lines,
-                  true,
-                  level,
-                );
               }
             },
             isEnabled: (s) => s.isAuthorized('preview', 'write') && s.status.webPath,
@@ -1421,78 +1521,22 @@
           id: 'bulk-publish',
           condition: (sidekick) => sidekick.isAdmin(),
           button: {
+            text: i18n(sk, 'publish'),
             action: async () => {
               const confirmText = getBulkText([bulkSelection.length], 'confirm', 'publish');
               if (bulkSelection.length === 0) {
                 sk.showModal(confirmText);
               } else if (window.confirm(confirmText)) {
                 sk.showWait();
-                const { config, status } = sk;
-                const sel = bulkSelection.map((item) => toWebPath(status.webPath, item));
-                const results = [];
-                const total = sel.length;
-                const { processQueue } = await import(`${config.scriptRoot}/lib/process-queue.js`);
-                await processQueue(sel, async (file) => {
-                  const resp = await sk.publish(file);
-                  results.push({
-                    ok: (resp.ok) || false,
-                    status: (resp.status) || 0,
-                    error: (resp.headers && resp.headers.get('x-error')) || '',
-                    path: (resp.ok && resp.json && (await resp.json()).webPath) || file,
-                  });
-                  if (total > 1) {
-                    sk.showModal(getBulkText([results.length, total], 'progress', 'publish'), true);
-                  }
-                }, 40);
-                const lines = [];
-                const ok = results.filter((res) => res.ok);
-                if (ok.length > 0) {
-                  lines.push(getBulkText([ok.length], 'result', 'publish', 'success'));
-                  lines.push(createTag({
-                    tag: 'button',
-                    attrs: {
-                      class: `hlx-sk-bulk-copy-url${ok.length > 1 ? 's' : ''}`,
-                    },
-                    lstnrs: {
-                      click: (evt) => {
-                        evt.stopPropagation();
-                        const host = config.host || config.outerHost;
-                        navigator.clipboard.writeText(ok.map((item) => `https://${host}${item.path}`)
-                          .join('\n'));
-                        sk.hideModal();
-                      },
-                    },
-                  }));
+                if (isChangedUrl()) {
+                  // url changed, refetch status
+                  sk.addEventListener('statusfetched', () => {
+                    doBulkOperation('publish', 'publish', 40, sk.config.host || sk.config.outerHost);
+                  }, { once: true });
+                  sk.fetchStatus(true);
+                } else {
+                  doBulkOperation('publish', 'publish', 40, sk.config.host || sk.config.outerHost);
                 }
-                const failed = results.filter((res) => !res.ok);
-                if (failed.length > 0) {
-                  const failureText = getBulkText([failed.length], 'result', 'publish', 'failure');
-                  lines.push(failureText);
-                  lines.push(...failed.map((item) => {
-                    if (item.error.startsWith('source does not exist')) {
-                      item.error = getBulkText([1], 'result', 'publish', 'error-no-source');
-                    }
-                    return `${item.path.split('/').pop()}: ${item.error}`;
-                  }));
-                }
-                lines.push(createTag({
-                  tag: 'button',
-                  attrs: {
-                    class: 'hlx-sk-bulk-close',
-                  },
-                }));
-                let level = 2;
-                if (failed.length > 0) {
-                  level = 1;
-                  if (ok.length === 0) {
-                    level = 0;
-                  }
-                }
-                sk.showModal(
-                  lines,
-                  true,
-                  level,
-                );
               }
             },
             isEnabled: (s) => s.isAuthorized('live', 'write') && s.status.webPath,
@@ -1532,18 +1576,22 @@
             condition,
             advanced,
             button: {
+              text: i18n(sk, `copy_${env}_url`),
               action: async () => {
                 const emptyText = getBulkText([bulkSelection.length], 'confirm');
                 if (bulkSelection.length === 0) {
                   sk.showModal(emptyText);
                 } else {
                   sk.showWait();
-                  const { config, status } = sk;
-                  const urls = bulkSelection.map((item) => `https://${config[hostProperty]}${toWebPath(status.webPath, item)}`);
-                  navigator.clipboard.writeText(urls.join('\n'));
-                  sk.showModal({
-                    css: `bulk-copied-url${urls.length !== 1 ? 's' : ''}`,
-                  });
+                  if (isChangedUrl()) {
+                    // url changed, refetch status
+                    sk.addEventListener('statusfetched', () => {
+                      doBulkCopyUrls(hostProperty);
+                    }, { once: true });
+                    sk.fetchStatus(true);
+                  } else {
+                    doBulkCopyUrls(hostProperty);
+                  }
                 }
               },
             },
@@ -1662,6 +1710,11 @@
                       } else {
                         palette.classList.remove('hlx-sk-hidden');
                         button.classList.add('pressed');
+                        // log telemetry
+                        sampleRUM('sidekick:paletteclosed', {
+                          source: sk.location.href,
+                          target: sk.status.webPath,
+                        });
                       }
                     };
                     if (!palette) {
@@ -1684,6 +1737,7 @@
                       appendTag(titleBar, {
                         tag: 'button',
                         attrs: {
+                          title: i18n(sk, 'close'),
                           class: 'close',
                         },
                         lstnrs: {
@@ -1736,7 +1790,7 @@
     const loginUrl = getAdminUrl(
       sk.config,
       'login',
-      sk.isEditor() ? '' : sk.location.pathname,
+      sk.isProject() ? sk.location.pathname : '',
     );
     loginUrl.searchParams.set('loginRedirect', 'https://www.hlx.live/tools/sidekick/login-success');
     const extensionId = window.chrome?.runtime?.id;
@@ -1781,13 +1835,13 @@
 
         if (seconds >= 120) {
           sk.showModal({
-            css: 'modal-login-timeout',
+            message: i18n(sk, 'error_login_timeout'),
             sticky: true,
             level: 1,
           });
         } else {
           sk.showModal({
-            css: 'modal-login-aborted',
+            messsage: i18n(sk, 'error_login_aborted'),
           });
         }
       }
@@ -1824,7 +1878,7 @@
       .catch((e) => {
         console.error('logout failed', e);
         sk.showModal({
-          css: 'modal-logout-error',
+          message: i18n(sk, 'error_logout_error'),
           level: 0,
         });
       });
@@ -1836,10 +1890,10 @@
    * @param {Sidekick} sk The sidekick
    */
   function checkUserState(sk) {
-    const toggle = sk.get('user').firstElementChild;
+    const toggle = sk.userMenu.firstElementChild;
     toggle.removeAttribute('disabled');
     const updateUserPicture = async (picture, name) => {
-      toggle.querySelectorAll('.user-picture').forEach((img) => img.remove());
+      toggle.querySelector('.user-picture')?.remove();
       if (picture) {
         if (picture.startsWith('https://admin.hlx.page/')) {
           // fetch the image with auth token
@@ -1856,12 +1910,13 @@
           attrs: {
             class: 'user-picture',
             src: picture,
-            title: name,
           },
         });
+        toggle.title = name;
       } else {
         toggle.querySelector('.user-picture')?.remove();
         toggle.querySelector('.user-icon').classList.remove('user-icon-hidden');
+        toggle.title = i18n(sk, 'anonymous');
       }
     };
     const { profile } = sk.status;
@@ -1913,6 +1968,7 @@
         id: 'user-switch',
         condition: (sidekick) => sidekick.isAuthenticated(),
         button: {
+          text: i18n(sk, 'user_switch'),
           action: () => login(sk, true),
         },
       });
@@ -1922,6 +1978,7 @@
         id: 'user-logout',
         condition: (sidekick) => sidekick.isAuthenticated(),
         button: {
+          text: i18n(sk, 'user_logout'),
           action: () => logout(sk),
         },
       });
@@ -1939,6 +1996,7 @@
         id: 'user-login',
         condition: (sidekick) => !sidekick.status.profile || !sidekick.isAuthenticated(),
         button: {
+          text: i18n(sk, 'user_login'),
           action: () => login(sk),
         },
       });
@@ -1946,7 +2004,7 @@
       sk.addEventListener('loggedin', () => {
         sk.remove('user-login');
       });
-      if (!sk.status.loggedOut && !sk.isAuthenticated()) {
+      if (!sk.status.loggedOut && sk.status.status === 401 && !sk.isAuthenticated()) {
         // // encourage login
         toggle.click();
         toggle.nextElementSibling.classList.add('highlight');
@@ -1954,7 +2012,7 @@
     }
   }
 
-  function getTimeAgo(dateParam) {
+  function getTimeAgo(sk, dateParam) {
     if (!dateParam) {
       return '';
     }
@@ -1967,33 +2025,38 @@
     const isToday = today.toDateString() === date.toDateString();
     const isYesterday = yesterday.toDateString() === date.toDateString();
     const isThisYear = today.getFullYear() === date.getFullYear();
-
-    if (seconds < 30) {
-      return '<span class="now">';
-    } else if (seconds < 120) {
-      return `${seconds} <span class="seconds-ago">`;
-    } else if (minutes < 60) {
-      return `${minutes} <span class="minutes-ago">`;
-    } else if (isToday) {
-      return `<span class="today"> ${date.toLocaleTimeString([], { timeStyle: 'short' })}`;
-    } else if (isYesterday) {
-      return `<span class="yesterday"> ${date.toLocaleTimeString([], { timeStyle: 'short' })}`;
-    } else if (isThisYear) {
-      return date.toLocaleString([], {
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: 'numeric',
-      });
-    }
-
-    return date.toLocaleString([], {
+    const timeToday = date.toLocaleTimeString([], {
+      timeStyle: 'short',
+    });
+    const dateThisYear = date.toLocaleString([], {
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: 'numeric',
+    });
+    const fullDate = date.toLocaleString([], {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
       minute: 'numeric',
     });
+
+    if (seconds < 30) {
+      return i18n(sk, 'now');
+    } else if (seconds < 120) {
+      return i18n(sk, 'seconds_ago').replace('$1', seconds);
+    } else if (minutes < 60) {
+      return i18n(sk, 'minutes_ago').replace('$1', minutes);
+    } else if (isToday) {
+      return i18n(sk, 'today_at').replace('$1', timeToday);
+    } else if (isYesterday) {
+      return i18n(sk, 'yesterday_at').replace('$1', timeToday);
+    } else if (isThisYear) {
+      return dateThisYear;
+    }
+
+    return fullDate;
   }
 
   function updateModifiedDates(sk) {
@@ -2011,9 +2074,9 @@
     const previewLastMod = (status.preview && status.preview.lastModified) || null;
     const liveLastMod = (status.live && status.live.lastModified) || null;
 
-    editEl.innerHTML = getTimeAgo(editLastMod);
-    previewEl.innerHTML = getTimeAgo(previewLastMod);
-    publishEl.innerHTML = getTimeAgo(liveLastMod);
+    editEl.innerHTML = getTimeAgo(sk, editLastMod);
+    previewEl.innerHTML = getTimeAgo(sk, previewLastMod);
+    publishEl.innerHTML = getTimeAgo(sk, liveLastMod);
   }
 
   /**
@@ -2036,24 +2099,30 @@
             {
               tag: 'div',
               attrs: {
-                class: 'edit-date',
+                class: 'edit-date-container',
               },
             },
             {
               tag: 'div',
               attrs: {
-                class: 'preview-date',
+                class: 'preview-date-container',
               },
             },
             {
               tag: 'div',
               attrs: {
-                class: 'publish-date',
+                class: 'publish-date-container',
               },
             },
           ],
         });
       }
+      sk.get('page-info').querySelector('.edit-date-container')
+        .innerHTML = `<span>${i18n(sk, 'edit_date')}</span><span class="edit-date"></span>`;
+      sk.get('page-info').querySelector('.preview-date-container')
+        .innerHTML = `<span>${i18n(sk, 'preview_date')}</span><span class="preview-date"></span>`;
+      sk.get('page-info').querySelector('.publish-date-container')
+        .innerHTML = `<span>${i18n(sk, 'publish_date')}</span><span class="publish-date"></span>`;
       updateModifiedDates(sk);
     }
   }
@@ -2108,7 +2177,14 @@
     window.setTimeout(() => {
       if (!sk.pluginContainer.querySelector(':scope div.plugin')) {
         // add empty text
-        sk.pluginContainer.classList.remove('loading');
+        sk.pluginContainer.innerHTML = '';
+        sk.pluginContainer.append(createTag({
+          tag: 'span',
+          text: i18n(sk, 'plugins_empty'),
+          attrs: {
+            class: 'hlx-sk-label',
+          },
+        }));
         sk.checkPushDownContent();
       }
     }, 5000);
@@ -2191,10 +2267,12 @@
     if (create && view) {
       const description = appendTag(view, {
         tag: 'div',
+        text: i18n(sk, 'json_view_description'),
         attrs: { class: 'description' },
       });
       appendTag(description, {
         tag: 'button',
+        text: i18n(sk, 'close'),
         attrs: { class: 'close' },
         // eslint-disable-next-line no-use-before-define
         lstnrs: { click: () => hideSpecialView(sk) },
@@ -2304,7 +2382,35 @@
           }
         }
       });
+
+      // log telemetry
+      sampleRUM('sidekick:specialviewhidden', {
+        source: sk.location.href,
+        target: sk.status.webPath,
+      });
     }
+  }
+
+  /**
+   * Fetches the dictionary for a language.
+   * @private
+   * @param {Sidekick} sk The sidekick
+   * @param {string} lang The language
+   * @returns {Object} The dictionary
+   */
+  async function fetchDict(sk, lang) {
+    const dict = {};
+    const dictPath = `${sk.config.scriptRoot}/_locales/${lang}/messages.json`;
+    try {
+      const res = await fetch(dictPath);
+      const messages = await res.json();
+      Object.keys(messages).forEach((key) => {
+        dict[key] = messages[key].message;
+      });
+    } catch (e) {
+      console.error(`failed to fetch dictionary from ${dictPath}`);
+    }
+    return dict;
   }
 
   /**
@@ -2342,6 +2448,93 @@
         },
       });
       this.addEventListener('contextloaded', () => {
+        // containers
+        this.pluginContainer = appendTag(this.root, {
+          tag: 'div',
+          attrs: {
+            class: 'plugin-container',
+          },
+        });
+        this.pluginContainer.append(createTag({
+          tag: 'span',
+          text: i18n(this, 'plugins_loading'),
+          attrs: {
+            class: 'hlx-sk-label',
+          },
+        }));
+        this.featureContainer = appendTag(this.root, {
+          tag: 'div',
+          attrs: {
+            class: 'feature-container',
+          },
+        });
+        // info button
+        appendTag(
+          this.featureContainer,
+          createDropdown(this, {
+            id: 'info',
+            lstnrs: {
+              click: () => {
+                this.fetchStatus();
+                updateModifiedDates(this);
+              },
+            },
+            button: {
+              attrs: {
+                disabled: '',
+                title: i18n(this, 'info'),
+              },
+              elements: [{
+                tag: 'div',
+                attrs: {
+                  class: 'info-icon',
+                },
+              }],
+            },
+          }),
+        );
+        // user button
+        this.userMenu = appendTag(
+          this.featureContainer,
+          createDropdown(this, {
+            id: 'user',
+            button: {
+              attrs: {
+                disabled: '',
+                title: i18n(this, 'anonymous'),
+              },
+              elements: [{
+                tag: 'div',
+                attrs: {
+                  class: 'user-icon',
+                },
+              }],
+            },
+          }),
+        );
+        // share button
+        const share = appendTag(this.featureContainer, {
+          tag: 'button',
+          attrs: {
+            class: 'share',
+            title: i18n(this, 'share_description'),
+          },
+          lstnrs: {
+            click: () => shareSidekick(this),
+          },
+        });
+        appendTag(share, { tag: 'i' });
+        // close button
+        appendTag(this.featureContainer, {
+          tag: 'button',
+          attrs: {
+            title: i18n(this, 'close'),
+            class: 'close',
+          },
+          lstnrs: {
+            click: () => this.hide(),
+          },
+        });
         // add default plugins
         addEditPlugin(this);
         addEnvPlugins(this);
@@ -2352,6 +2545,8 @@
         addUnpublishPlugin(this);
         addCustomPlugins(this);
         addBulkPlugins(this);
+        // fetch status
+        this.fetchStatus();
       }, { once: true });
       this.addEventListener('statusfetched', () => {
         checkUserState(this);
@@ -2369,84 +2564,8 @@
       });
       this.status = {};
       this.plugins = [];
-      this.pluginContainer = appendTag(this.root, {
-        tag: 'div',
-        attrs: {
-          class: 'plugin-container loading',
-        },
-      });
-      this.featureContainer = appendTag(this.root, {
-        tag: 'div',
-        attrs: {
-          class: 'feature-container',
-        },
-      });
-      // info button
-      appendTag(
-        this.featureContainer,
-        createDropdown(this, {
-          id: 'info',
-          lstnrs: {
-            click: () => {
-              this.fetchStatus();
-              updateModifiedDates(this);
-            },
-          },
-          button: {
-            attrs: {
-              disabled: '',
-            },
-            elements: [{
-              tag: 'div',
-              attrs: {
-                class: 'info-icon',
-              },
-            }],
-          },
-        }),
-      );
-      // user button
-      this.userMenu = appendTag(
-        this.featureContainer,
-        createDropdown(this, {
-          id: 'user',
-          button: {
-            attrs: {
-              disabled: '',
-            },
-            elements: [{
-              tag: 'div',
-              attrs: {
-                class: 'user-icon',
-              },
-            }],
-          },
-        }),
-      );
-      // share button
-      const share = appendTag(this.featureContainer, {
-        tag: 'button',
-        attrs: {
-          class: 'share',
-        },
-        lstnrs: {
-          click: () => shareSidekick(this),
-        },
-      });
-      appendTag(share, { tag: 'i' });
-      // close button
-      appendTag(this.featureContainer, {
-        tag: 'button',
-        attrs: {
-          class: 'close',
-        },
-        lstnrs: {
-          click: () => this.hide(),
-        },
-      });
 
       this.loadContext(cfg);
-      this.fetchStatus();
       this.loadCSS();
       checkForIssues(this);
 
@@ -2484,7 +2603,7 @@
         .then((resp) => {
           // check for error status
           if (!resp.ok) {
-            let css = '';
+            let errorKey = '';
             switch (resp.status) {
               case 401:
                 // unauthorized, ask user to log in
@@ -2494,14 +2613,14 @@
                   }),
                 };
               case 404:
-                css = this.isEditor()
-                  ? 'modal-status-404-document'
-                  : 'modal-status-404-content';
+                errorKey = this.isEditor()
+                  ? 'error_status_404_document'
+                  : 'error_status_404_content';
                 break;
               default:
-                css = `modal-status-${resp.status}`;
+                errorKey = `error_status_${resp.status}`;
             }
-            throw new Error(css);
+            throw new Error(errorKey);
           }
           return resp;
         })
@@ -2509,14 +2628,15 @@
           try {
             return resp.json();
           } catch (e) {
-            throw new Error('modal-status-invalid');
+            throw new Error('error_status_invalid');
           }
         })
         .then((json) => Object.assign(this.status, json))
         .then((json) => fireEvent(this, 'statusfetched', json))
-        .catch((e) => {
-          this.status.error = e.message;
+        .catch(({ message }) => {
+          this.status.error = message;
           const modal = {
+            message: message.startsWith('error_') ? i18n(this, message) : message,
             sticky: true,
             level: 0,
             callback: () => {
@@ -2528,27 +2648,29 @@
               }
             },
           };
-          if (e.message.startsWith('modal-status-')) {
-            // add error mesasage as css class
-            modal.css = e.message;
-          } else {
-            // add error mesasage as text
-            modal.message = e.message;
-          }
           this.showModal(modal);
         });
       return this;
     }
 
     /**
-     * Loads the sidekick configuration and retrieves the location of the current document.
+     * Loads the sidekick configuration and language dictionary,
+     * and retrieves the location of the current document.
      * @param {SidekickConfig} cfg The sidekick config
      * @fires Sidekick#contextloaded
      * @returns {Sidekick} The sidekick
      */
-    loadContext(cfg) {
+    async loadContext(cfg) {
       this.location = getLocation();
       this.config = initConfig(cfg, this.location);
+
+      // load dictionary based on user language
+      const lang = this.config.lang || navigator.language.split('-')[0];
+      this.dict = await fetchDict(this, lang);
+      if (!this.dict.title) {
+        // unsupported language, default to english
+        this.dict = await fetchDict(this, 'en');
+      }
       fireEvent(this, 'contextloaded', {
         config: this.config,
         location: this.location,
@@ -2661,12 +2783,12 @@
           return $plugin;
         }
         // add plugin
-        $plugin = appendTag($pluginContainer, getPluginCfg(plugin), $before);
         if ($pluginContainer === this.pluginContainer
-            && this.pluginContainer.classList.contains('loading')) {
-          // remove loading text
-          this.pluginContainer.classList.remove('loading');
+          && !$pluginContainer.querySelector(':scope div.plugin')) {
+          // first plugin, remove loading text
+          $pluginContainer.innerHTML = '';
         }
+        $plugin = appendTag($pluginContainer, getPluginCfg(plugin), $before);
       } else if (!plugin.isShown) {
         // remove existing plugin
         $plugin.remove();
@@ -2750,7 +2872,10 @@
      */
     isEditor() {
       const { config, location } = this;
-      return (/.*\.sharepoint\.com/.test(location.host) && location.pathname.endsWith('_layouts/15/Doc.aspx'))
+      const { host, pathname, search } = location;
+      return (/.*\.sharepoint\.com$/.test(host)
+        && pathname.match(/\/_layouts\/15\/[\w]+.aspx$/)
+        && search.includes('sourcedoc='))
         || location.host === 'docs.google.com'
         || (config.mountpoint && new URL(config.mountpoint).host === location.host
           && !this.isAdmin());
@@ -2763,7 +2888,8 @@
     isAdmin() {
       const { location } = this;
       return (location.host === 'drive.google.com')
-        || (location.host.match(/\w+\.sharepoint.com/) && location.pathname.endsWith('/Forms/AllItems.aspx'));
+        || (/\w+\.sharepoint.com$/.test(location.host)
+        && location.pathname.endsWith('/Forms/AllItems.aspx'));
     }
 
     /**
@@ -2840,8 +2966,7 @@
      * else <code>false</code>
      */
     isAuthenticated() {
-      const { status } = this.status;
-      return status !== 401;
+      return !!this.status?.profile;
     }
 
     /**
@@ -2879,7 +3004,7 @@
      * Displays a sticky notification asking the user to wait.
      */
     showWait() {
-      this.showModal({ css: 'modal-wait', sticky: true });
+      this.showModal({ message: i18n(this, 'please_wait'), sticky: true });
     }
 
     /**
@@ -3000,9 +3125,6 @@
      * @returns {Sidekick} The sidekick
      */
     showHelp(topic, step = 0) {
-      if (!this.isAuthenticated()) {
-        return this;
-      }
       const { id, steps } = topic;
       // contextualize and consolidate help steps
       const cSteps = steps.filter(({ selector }) => {
@@ -3049,6 +3171,7 @@
             tag: 'a',
             attrs: {
               class: `help-step help-${type}`,
+              title: i18n(this, `help_${type}`),
             },
             lstnrs: {
               click: (evt) => {
@@ -3070,16 +3193,12 @@
         const close = appendTag(buttonControls, createDropdown(this, {
           id: 'help-close',
           button: {
-            attrs: {
-              class: 'dropdown-toggle close',
-            },
+            text: i18n(this, 'close'),
           },
         }));
         appendTag(close.lastElementChild, {
           tag: 'button',
-          attrs: {
-            class: 'help-close-dismiss',
-          },
+          text: i18n(this, 'help_close_dismiss'),
           lstnrs: {
             click: () => {
               fireEvent(this, 'helpdismissed', id);
@@ -3088,9 +3207,7 @@
         });
         appendTag(close.lastElementChild, {
           tag: 'button',
-          attrs: {
-            class: 'help-close-acknowledge',
-          },
+          text: i18n(this, 'help_close_acknowledge'),
           lstnrs: {
             click: () => {
               fireEvent(this, 'helpacknowledged', id);
@@ -3099,9 +3216,7 @@
         });
         appendTag(close.lastElementChild, {
           tag: 'button',
-          attrs: {
-            class: 'help-close-opt-out',
-          },
+          text: i18n(this, 'help_close_opt_out'),
           lstnrs: {
             click: () => {
               fireEvent(this, 'helpoptedout', id);
@@ -3110,6 +3225,7 @@
         });
         appendTag(buttonControls, {
           tag: 'button',
+          text: i18n(this, 'help_next'),
           attrs: {
             class: 'help-next',
           },
@@ -3125,6 +3241,7 @@
         // last help step
         appendTag(buttonControls, {
           tag: 'button',
+          text: i18n(this, 'help_acknowledge'),
           attrs: {
             class: 'help-acknowledge',
           },
@@ -3168,20 +3285,6 @@
         .addEventListener('load', () => {
           fireEvent(this, 'cssloaded');
         });
-      // i18n
-      if (!path && !navigator.language.startsWith('en')) {
-        // look for language file in same directory
-        const langHref = `${href.substring(0, href.lastIndexOf('/'))}/${navigator.language.split('-')[0]}.css`;
-        appendTag(this.shadowRoot, {
-          tag: 'link',
-          attrs: {
-            rel: 'stylesheet',
-            href: langHref,
-          },
-        }).addEventListener('load', () => {
-          fireEvent(this, 'langloaded');
-        });
-      }
       return this;
     }
 
@@ -3340,6 +3443,8 @@
       } catch (e) {
         console.error('failed to publish', path, e);
       }
+      resp.path = path;
+      resp.error = (resp.headers && resp.headers.get('x-error')) || '';
       return resp;
     }
 

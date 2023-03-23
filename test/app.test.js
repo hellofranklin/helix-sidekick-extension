@@ -11,17 +11,12 @@
  */
 /* eslint-env mocha */
 
-'use strict';
+import assert from 'assert';
+import {
+  Nock, Setup, TestBrowser,
+} from './utils.js';
 
-const assert = require('assert');
-
-const {
-  DEBUG,
-  Nock,
-  TestBrowser,
-  Setup,
-} = require('./utils.js');
-const { SidekickTest } = require('./SidekickTest.js');
+import { SidekickTest } from './SidekickTest.js';
 
 /**
  * Specific tests for behaviour that only exists in the bookmarklet. All other tests are covered
@@ -65,10 +60,6 @@ describe('Test sidekick bookmarklet only', () => {
 
   it('Extension hint opens share URL and writes local storage', async () => {
     nock.admin(new Setup('blog'));
-    nock('https://www.hlx.live')
-      .get('/tools/sidekick/?giturl=https%3A%2F%2Fgithub.com%2Fadobe%2Fblog%2Ftree%2Fmain')
-      .times(DEBUG ? 2 : 1) // when dev-tools are enabled, browser makes 2 requests.
-      .reply(200, 'Share URL');
 
     const { popupOpened } = await new SidekickTest({
       browser,
@@ -92,10 +83,6 @@ describe('Test sidekick bookmarklet only', () => {
 
   it('Extension hint opens share URL', async () => {
     nock.admin(new Setup('blog'));
-    nock('https://www.hlx.live')
-      .get('/tools/sidekick/?giturl=https%3A%2F%2Fgithub.com%2Fadobe%2Fblog%2Ftree%2Fmain')
-      .times(DEBUG ? 2 : 1) // when dev-tools are enabled, browser makes 2 requests.
-      .reply(200, 'Share URL');
 
     const { popupOpened } = await new SidekickTest({
       browser,

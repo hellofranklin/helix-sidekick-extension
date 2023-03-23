@@ -2,7 +2,7 @@ version: 2.1
 executors:
   node18:
     docker:
-      - image: cimg/node:18.2
+      - image: cimg/node:18.15
 
 orbs:
   browser-tools: circleci/browser-tools@1.4.1
@@ -33,7 +33,7 @@ jobs:
           name: Test
           command: |
             export CHROME_PATH=`find /home/circleci/project/node_modules -name chrome`
-            npm run test
+            npm run test-ci
       - codecov/upload
       - store_test_results:
           path: junit

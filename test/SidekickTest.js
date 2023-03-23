@@ -11,23 +11,18 @@
  */
 /* eslint-env mocha */
 
-'use strict';
+import { EventEmitter } from 'events';
 
-const { EventEmitter } = require('events');
-const fs = require('fs').promises;
-
-const {
-  DEBUG_LOGS,
-  Setup,
+import { promises as fs } from 'fs';
+import {
   assertPlugin,
-  execPlugin,
   checkEventFired,
+  DEBUG_LOGS,
+  execPlugin, getNotification, getPlugins,
+  Setup,
   sleep,
-  toResp,
-  getPlugins,
-  getNotification,
-  waitFor,
-} = require('./utils.js');
+  toResp, waitFor,
+} from './utils.js';
 
 /**
  * @typedef {Object} Page
@@ -130,7 +125,7 @@ const {
 /**
  * The sidekick test runner.
  */
-class SidekickTest extends EventEmitter {
+export class SidekickTest extends EventEmitter {
   /**
    * Creates a new {@code SidekickTest} instance.
    * @param {SidekickTest~Options} o The options
@@ -274,23 +269,35 @@ class SidekickTest extends EventEmitter {
         }
       }
       if (url.startsWith('http')) {
-        requestsMade.push(reqObj);
-        if (url.endsWith('/tools/sidekick/config.json')) {
-          configLoaded = url;
-          return toResp(configJson);
-        } else if (url.endsWith('/tools/sidekick/config.js')) {
-          configLoaded = url;
-          return toResp(configJs);
-        } else if (url === 'https://www.hlx.live/tools/sidekick/module.js') {
-          try {
-            // return local module.js
-            const module = await fs.readFile(`${__dirname}/../src/extension/module.js`, 'utf-8');
-            return toResp(module);
-          } catch (e) {
-            throw new Error('failed to load local module.js');
-          }
+        if (url.startsWith('https://rum.hlx.page/')) {
+          // dummy response for rum requests
+          return toResp('');
         } else {
-          return null;
+          requestsMade.push(reqObj);
+          if (url.endsWith('/tools/sidekick/config.json')) {
+            configLoaded = url;
+            return toResp(configJson);
+          } else if (url.endsWith('/tools/sidekick/config.js')) {
+            configLoaded = url;
+            return toResp(configJs);
+          } else if (url.startsWith('https://www.hlx.live/tools/sidekick/')) {
+            // return local source file
+            const { pathname, search } = new URL(url);
+            if (pathname === '/tools/sidekick/' && search) {
+              // share url
+              return toResp('Share URL', 'foo.html');
+            }
+            const path = `${__rootdir}/src/extension/${pathname.split('/').slice(3).join('/')}`;
+            try {
+              const file = await fs.readFile(path, 'utf-8');
+              return toResp(file, pathname);
+            } catch (e) {
+              throw new Error('failed to load local module.js');
+            }
+          } else if (url.startsWith('https://www.hlx.live/')) {
+            // dummy content for anything else on www.hlx.live
+            return toResp('', url);
+          }
         }
       } else if (url.startsWith('file://') && url.indexOf('/bookmarklet/') > 0 && !url.endsWith('/app.js')) {
         // rewrite all `/bookmarklet/` requests (except app.js)
@@ -325,7 +332,7 @@ class SidekickTest extends EventEmitter {
 
       // open fixture and run test
       this.page
-        .goto(`file://${__dirname}/fixtures/${this.fixture}`, { waitUntil: 'load' })
+        .goto(`file://${__testdir}/fixtures/${this.fixture}`, { waitUntil: 'load' })
         .then(() => this.pre(this.page))
         .then(() => this.page.evaluate(async (
           testLocation,
@@ -348,7 +355,7 @@ class SidekickTest extends EventEmitter {
             const s = document.createElement('script');
             s.id = 'hlx-sk-app';
             s.src = '../../src/bookmarklet/app.js';
-            skCfg.scriptUrl = s.src;
+            skCfg.scriptRoot = 'https://www.hlx.live/tools/sidekick';
             s.dataset.config = JSON.stringify(skCfg);
             if (document.head.querySelector('script#hlx-sk-app')) {
               document.head.querySelector('script#hlx-sk-app').replaceWith(s);
@@ -360,7 +367,7 @@ class SidekickTest extends EventEmitter {
             moduleScript.id = 'hlx-sk-module';
             moduleScript.src = '../../src/extension/module.js';
             moduleScript.addEventListener('load', async () => {
-              skCfg.scriptUrl = moduleScript.src;
+              skCfg.scriptUrl = 'https://www.hlx.live/tools/sidekick/module.js';
               window.hlx.sidekickConfig = skCfg;
               const {
                 owner,
@@ -415,7 +422,6 @@ class SidekickTest extends EventEmitter {
             'unpublished',
             'deleted',
             'cssloaded',
-            'langloaded',
             'pluginsloaded',
             ...checkEvents,
           ].forEach((eventType) => {
@@ -492,7 +498,3 @@ class SidekickTest extends EventEmitter {
     };
   }
 }
-
-module.exports = {
-  SidekickTest,
-};

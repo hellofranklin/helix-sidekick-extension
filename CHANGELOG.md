@@ -1,3 +1,95 @@
+## [6.11.1](https://github.com/adobe/helix-sidekick-extension/compare/v6.11.0...v6.11.1) (2023-03-21)
+
+
+### Bug Fixes
+
+* iOS display name and typo ([8bb7571](https://github.com/adobe/helix-sidekick-extension/commit/8bb75716f8f479a1719177f8c618f6f890984402))
+
+# [6.11.0](https://github.com/adobe/helix-sidekick-extension/compare/v6.10.0...v6.11.0) (2023-03-20)
+
+
+### Features
+
+* safari extension icons and styling [skip ci] ([551d103](https://github.com/adobe/helix-sidekick-extension/commit/551d1031f7c6cd100f5b73835c2eb5bb70ef568f))
+
+# [6.10.0](https://github.com/adobe/helix-sidekick-extension/compare/v6.9.1...v6.10.0) (2023-03-19)
+
+
+### Bug Fixes
+
+* bulk operations can fail after navigation ([9b5fc91](https://github.com/adobe/helix-sidekick-extension/commit/9b5fc917a803cc695e9f6c6ce200aaf8177a2993))
+* login fails in admin env ([068d400](https://github.com/adobe/helix-sidekick-extension/commit/068d40035cfb8b076ecf7efb273d428ba761c91b))
+* potential insufficient hostname validation ([9bf489d](https://github.com/adobe/helix-sidekick-extension/commit/9bf489d93c04d03aedd63c029a7c80c4fc3c30e9))
+
+
+### Features
+
+* add telemetry ([df63ea6](https://github.com/adobe/helix-sidekick-extension/commit/df63ea61b6a79b804e5009c457f42b64120becfc))
+
+## [6.9.1](https://github.com/adobe/helix-sidekick-extension/compare/v6.9.0...v6.9.1) (2023-03-14)
+
+
+### Bug Fixes
+
+* release (version rollback) ([8dd208d](https://github.com/adobe/helix-sidekick-extension/commit/8dd208de074e4ece81ca0fb9ce86d291ba23117d))
+
+## [6.8.5](https://github.com/adobe/helix-sidekick-extension/compare/v6.8.4...v6.8.5) (2023-03-13)
+
+
+### Bug Fixes
+
+* lower concurrency for bulk preview ([083cce9](https://github.com/adobe/helix-sidekick-extension/commit/083cce983f7c4c7253820e31524081ddc92464d6))
+
+## [6.8.4](https://github.com/adobe/helix-sidekick-extension/compare/v6.8.3...v6.8.4) (2023-03-10)
+
+
+### Bug Fixes
+
+* sidekick always shows login option ([a22dd25](https://github.com/adobe/helix-sidekick-extension/commit/a22dd2547ac87daa4157bf5101c8e51e7cf4da55))
+
+## [6.8.3](https://github.com/adobe/helix-sidekick-extension/compare/v6.8.2...v6.8.3) (2023-03-09)
+
+
+### Bug Fixes
+
+* fix the isAuthenticated method ([#271](https://github.com/adobe/helix-sidekick-extension/issues/271)) ([80d592b](https://github.com/adobe/helix-sidekick-extension/commit/80d592be3f21562d2a3ac9633530da81057390b2))
+
+## [6.8.2](https://github.com/adobe/helix-sidekick-extension/compare/v6.8.1...v6.8.2) (2023-03-06)
+
+
+### Bug Fixes
+
+* language fallback failing ([6cc5f2c](https://github.com/adobe/helix-sidekick-extension/commit/6cc5f2c71c4518f53e344b28ec8964efac0dae8a))
+
+## [6.8.1](https://github.com/adobe/helix-sidekick-extension/compare/v6.8.0...v6.8.1) (2023-03-04)
+
+
+### Bug Fixes
+
+* pass sk instance to i18n ([8ba6778](https://github.com/adobe/helix-sidekick-extension/commit/8ba6778d0fe1d9530a8a01c4727db655f9e71801))
+
+# [6.8.0](https://github.com/adobe/helix-sidekick-extension/compare/v6.7.7...v6.8.0) (2023-03-03)
+
+
+### Features
+
+* disable special view on /helix-env.json ([9854055](https://github.com/adobe/helix-sidekick-extension/commit/98540557916c7f4a18b8c76ac6fb70bb44bdd871))
+* open preview from github ([36df39c](https://github.com/adobe/helix-sidekick-extension/commit/36df39c406eac88ef09f92b47e2519648c2a8c22))
+
+## [6.7.7](https://github.com/adobe/helix-sidekick-extension/compare/v6.7.6...v6.7.7) (2023-02-09)
+
+
+### Bug Fixes
+
+* **view-doc-source:** missing image when root path is not '/' ([e397653](https://github.com/adobe/helix-sidekick-extension/commit/e397653b1aa6da861d7f62afe58443d07799cc0f))
+
+## [6.7.6](https://github.com/adobe/helix-sidekick-extension/compare/v6.7.5...v6.7.6) (2023-02-08)
+
+
+### Bug Fixes
+
+* 404 status error on new documents ([01ea94e](https://github.com/adobe/helix-sidekick-extension/commit/01ea94e2689a23ff0b75382fae31e280ce36205e))
+
 ## [6.7.5](https://github.com/adobe/helix-sidekick-extension/compare/v6.7.4...v6.7.5) (2023-01-15)
 
 

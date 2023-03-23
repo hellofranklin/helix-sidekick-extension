@@ -10,8 +10,6 @@
  * governing permissions and limitations under the License.
  */
 
-'use strict';
-
 import {
   GH_URL,
   SHARE_PREFIX,
@@ -157,6 +155,14 @@ async function checkContextMenu({ url: tabUrl, id }, configs = []) {
             chrome.contextMenus.create({
               id: 'enableDisableProject',
               title: disabled ? i18n('config_project_enable') : i18n('config_project_disable'),
+              contexts: [
+                'action',
+              ],
+            });
+            // open preview
+            chrome.contextMenus.create({
+              id: 'openPreview',
+              title: i18n('open_preview'),
               contexts: [
                 'action',
               ],
@@ -318,7 +324,7 @@ function checkViewDocSource(id) {
         openViewDocSource(id);
       }
     } catch (e) {
-      log.warn(`Error checking view source for url: ${tab.url}`, e);
+      log.warn(`Error checking view document source for url: ${tab.url}`, e);
     }
   });
 }
@@ -371,6 +377,14 @@ function checkViewDocSource(id) {
       }
     },
     openViewDocSource: async ({ id }) => openViewDocSource(id),
+    openPreview: ({ url }) => {
+      const { owner, repo, ref = 'main' } = getGitHubSettings(url);
+      if (owner && repo) {
+        chrome.tabs.create({
+          url: `https://${ref}--${repo}--${owner}.hlx.page/`,
+        });
+      }
+    },
   };
 
   if (chrome.contextMenus) {
