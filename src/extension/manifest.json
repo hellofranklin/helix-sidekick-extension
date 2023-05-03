@@ -8,7 +8,9 @@
   "options_page": "options.html",
   "description": "__MSG_description__",
   "permissions": [
+    "activeTab",
     "contextMenus",
+    "declarativeNetRequest",
     "scripting",
     "storage",
     "activeTab",
@@ -16,6 +18,7 @@
     "tabs"
   ],
   "host_permissions": [
+    "https://www.hlx.live/tools/sidekick/*",
     "http://localhost:3000/*",
     "https://*/*"
   ],
@@ -47,8 +50,7 @@
         "view-doc-source/js/content.js"
       ],
       "matches": [
-        "https://*/*",
-        "http://localhost:3000/*"
+        "<all_urls>"
       ]
     }
   ],

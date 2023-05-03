@@ -40,15 +40,6 @@ function alert(msg) {
   return null;
 }
 
-// shows a window.confirm (noop if headless)
-function confirm(msg) {
-  if (typeof window !== 'undefined' && !/HeadlessChrome/.test(window.navigator.userAgent)) {
-    // eslint-disable-next-line no-alert
-    return window.confirm(msg);
-  }
-  return true;
-}
-
 // shorthand for browser.i18n.getMessage()
 export function i18n(msg, subs) {
   return chrome.i18n.getMessage(msg, subs);
@@ -310,6 +301,7 @@ export async function getProject(project) {
 export async function setProject(project, cb) {
   const { owner, repo } = project;
   const handle = `${owner}/${repo}`;
+  // update project config
   await setConfig('sync', {
     [handle]: project,
   });
@@ -320,6 +312,7 @@ export async function setProject(project, cb) {
     await setConfig('sync', { hlxSidekickProjects: projects });
   }
   log.info('updated project', project);
+
   if (typeof cb === 'function') {
     cb(project);
   }
@@ -345,7 +338,10 @@ export async function deleteProject(handle, cb) {
     const projects = await getConfig('sync', 'hlxSidekickProjects') || [];
     const i = projects.indexOf(handle);
     if (i >= 0) {
-      if (confirm(i18n('config_delete_confirm'))) {
+      try {
+        // delete admin auth header rule
+        const [owner, repo] = handle.split('/');
+        chrome.runtime.sendMessage({ deleteAuthToken: { owner, repo } });
         // delete the project entry
         await removeConfig('sync', handle);
         // remove project entry from index
@@ -353,8 +349,8 @@ export async function deleteProject(handle, cb) {
         await setConfig('sync', { hlxSidekickProjects: projects });
         log.info('project deleted', handle);
         if (typeof cb === 'function') cb(true);
-      } else {
-        log.info('project deletion aborted', handle);
+      } catch (e) {
+        log.error('project deletion failed', handle, e);
         if (typeof cb === 'function') cb(false);
       }
     } else {
@@ -378,22 +374,6 @@ export function toggleDisplay(cb) {
   getState(({ display }) => {
     setDisplay(!display, cb);
   });
-}
-
-export async function storeAuthToken(owner, repo, token) {
-  // find config tab with owner/repo
-  const project = await getProject({ owner, repo });
-  if (project) {
-    if (token) {
-      project.authToken = token;
-    } else {
-      delete project.authToken;
-    }
-    await setProject(project);
-    log.debug(`updated auth token for ${owner}--${repo}`);
-  } else {
-    log.warn(`unable to update auth token for ${owner}--${repo}: no such config`);
-  }
 }
 
 export async function updateProjectConfigs() {

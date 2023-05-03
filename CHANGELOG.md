@@ -1,3 +1,93 @@
+# [6.14.0](https://github.com/adobe/helix-sidekick-extension/compare/v6.13.2...v6.14.0) (2023-05-02)
+
+
+### Bug Fixes
+
+* authToken needed for microsoft profile pic ([3a961e5](https://github.com/adobe/helix-sidekick-extension/commit/3a961e582067ca348cd10a7fc9fc277478ac4347))
+
+
+### Features
+
+* load sidekick from admin API [skip ci] ([f02764b](https://github.com/adobe/helix-sidekick-extension/commit/f02764b93256a1ec735a8745acd0a3eb8549515a))
+
+## [6.13.2](https://github.com/adobe/helix-sidekick-extension/compare/v6.13.1...v6.13.2) (2023-04-28)
+
+
+### Bug Fixes
+
+* delete project not working in safari ([9216df8](https://github.com/adobe/helix-sidekick-extension/commit/9216df871d3c4b7387f0c619c1c1f41de8823991))
+
+## [6.13.1](https://github.com/adobe/helix-sidekick-extension/compare/v6.13.0...v6.13.1) (2023-04-28)
+
+
+### Bug Fixes
+
+* share url instrumentation ([fd732b6](https://github.com/adobe/helix-sidekick-extension/commit/fd732b60a41b56b50d519210760c6d8d0383a9f1))
+
+# [6.13.0](https://github.com/adobe/helix-sidekick-extension/compare/v6.12.5...v6.13.0) (2023-04-28)
+
+
+### Bug Fixes
+
+* only inject content script if config match ([55f628d](https://github.com/adobe/helix-sidekick-extension/commit/55f628d0565011aad4911f6d86f462de7748fecb))
+* only inject content script if config match ([17bdb1b](https://github.com/adobe/helix-sidekick-extension/commit/17bdb1b55bc524fcfa4278047f7d629227a38557))
+* safari error on localhost urls ([637e3c2](https://github.com/adobe/helix-sidekick-extension/commit/637e3c2863f684a2f8077d9396ec2b4cd487f379))
+
+
+### Features
+
+* add auth token to every admin api request ([e11b61d](https://github.com/adobe/helix-sidekick-extension/commit/e11b61df713111484f7f0e684048d0391ca36020))
+* add auth token to every admin api request ([1007caf](https://github.com/adobe/helix-sidekick-extension/commit/1007cafb75215f65477262f3bae2b26213b76117))
+* new logout flow ([8835ae6](https://github.com/adobe/helix-sidekick-extension/commit/8835ae6e309023439e2c2f92add8cc754b0a2521))
+
+## [6.12.5](https://github.com/adobe/helix-sidekick-extension/compare/v6.12.4...v6.12.5) (2023-04-24)
+
+
+### Bug Fixes
+
+* add wildcard to clipboard-write permissions ([18bc288](https://github.com/adobe/helix-sidekick-extension/commit/18bc2888e37c8aec04f4554e49f8f414833d5b49))
+
+## [6.12.4](https://github.com/adobe/helix-sidekick-extension/compare/v6.12.3...v6.12.4) (2023-04-15)
+
+
+### Bug Fixes
+
+* missing please wait message in gdrive ([c9896c2](https://github.com/adobe/helix-sidekick-extension/commit/c9896c296f891e187771ec0592ea3f7ab5b2178f))
+* **options:** double uri encoding ([b40f283](https://github.com/adobe/helix-sidekick-extension/commit/b40f283a53387586fd885ef5f8d0976fbbdf212c))
+
+## [6.12.3](https://github.com/adobe/helix-sidekick-extension/compare/v6.12.2...v6.12.3) (2023-04-11)
+
+
+### Bug Fixes
+
+* bulk actions not working in grid view ([00c3f7a](https://github.com/adobe/helix-sidekick-extension/commit/00c3f7ad14f5e0aac943e9ebd11a31105f607625))
+* confusing error message on 404 ([48decc8](https://github.com/adobe/helix-sidekick-extension/commit/48decc802ac77c40bbc939635fe533378df67296))
+* dropdown accessibility ([d57dde0](https://github.com/adobe/helix-sidekick-extension/commit/d57dde03601a18a16fd1210b41d093912775f0fa))
+* only inject content script if config match ([b6fd3f9](https://github.com/adobe/helix-sidekick-extension/commit/b6fd3f970e5396bc006c7ce6e6e2e6a9e3c82bf8))
+* restrict  open preview to github urls ([e6d6fc4](https://github.com/adobe/helix-sidekick-extension/commit/e6d6fc4f829f13675a6de643ea450ab0a0663e92))
+* safari error on localhost urls ([2d07f3e](https://github.com/adobe/helix-sidekick-extension/commit/2d07f3e8600a4e4df640f43caf052883f671220d))
+
+## [6.12.2](https://github.com/adobe/helix-sidekick-extension/compare/v6.12.1...v6.12.2) (2023-04-03)
+
+
+### Bug Fixes
+
+* **bulk:** special chars in folder or file names ([2beafbf](https://github.com/adobe/helix-sidekick-extension/commit/2beafbf38ccac57afd8883d8ee55d9f446e7167f))
+
+## [6.12.1](https://github.com/adobe/helix-sidekick-extension/compare/v6.12.0...v6.12.1) (2023-03-28)
+
+
+### Bug Fixes
+
+* undefined date should say never ([1fdb096](https://github.com/adobe/helix-sidekick-extension/commit/1fdb09686556fb69be959b15c14580e20aa12e3b))
+
+# [6.12.0](https://github.com/adobe/helix-sidekick-extension/compare/v6.11.1...v6.12.0) (2023-03-28)
+
+
+### Features
+
+* relax view doc source constraint ([#296](https://github.com/adobe/helix-sidekick-extension/issues/296)) ([04d40f1](https://github.com/adobe/helix-sidekick-extension/commit/04d40f14a5f7615b5d11b1fd71d303c7eea20e9f))
+
 ## [6.11.1](https://github.com/adobe/helix-sidekick-extension/compare/v6.11.0...v6.11.1) (2023-03-21)
 
 
